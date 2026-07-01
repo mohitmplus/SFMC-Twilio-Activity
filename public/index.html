@@ -1,19 +1,561 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Twilio SMS Configuration</title>
-    <style>
-        body { font-family: Arial, sans-serif; padding: 20px; }
-        textarea { width: 100%; height: 100px; margin-top: 10px; padding: 10px; }
-        label { font-weight: bold; }
-    </style>
+<meta charset="UTF-8">
+<title>Twilio SMS Configuration</title>
+<style>
+  :root {
+    --ink: #1A2B3C;
+    --slate: #5B6B7A;
+    --slate-light: #9AA8B4;
+    --hairline: #E1E7EC;
+    --panel-bg: #FAFBFC;
+    --ccf-navy: #003057;
+    --ccf-navy-deep: #001C33;
+    --ccf-blue: #0072CE;
+    --ccf-orange: #F58220;
+    --ccf-orange-soft: #FFF1E3;
+    --white: #FFFFFF;
+    --success: #1FAA6E;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif;
+    color: var(--ink);
+    background: var(--panel-bg);
+  }
+
+  .site-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 40px;
+    background: var(--white);
+    border-bottom: 1px solid var(--hairline);
+    position: sticky;
+    top: 0;
+    z-index: 20;
+  }
+
+  .site-header .header-accent {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--ccf-orange) 0%, #FFB25A 100%);
+  }
+
+  .site-header img {
+    height: 36px;
+    width: auto;
+    display: block;
+  }
+
+  .site-header .header-divider {
+    width: 1px;
+    height: 24px;
+    background: var(--hairline);
+  }
+
+  .site-header .header-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ccf-navy);
+    letter-spacing: 0.01em;
+  }
+
+  .app {
+    display: grid;
+    grid-template-columns: 1fr 420px;
+    min-height: calc(100vh - 65px);
+  }
+
+  /* ---------- LEFT: FORM PANEL ---------- */
+  .form-panel {
+    padding: 40px 56px 80px;
+    max-width: 640px;
+  }
+
+  .eyebrow {
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ccf-orange);
+    font-weight: 700;
+    margin: 0 0 6px;
+  }
+
+  h1 {
+    font-size: 26px;
+    font-weight: 700;
+    margin: 0 0 6px;
+    letter-spacing: -0.01em;
+  }
+
+  .subtitle {
+    font-size: 14.5px;
+    color: var(--slate);
+    margin: 0 0 32px;
+  }
+
+  section.block {
+    margin-bottom: 36px;
+  }
+
+  .block-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding-bottom: 14px;
+    margin-bottom: 20px;
+    border-bottom: 1px solid var(--hairline);
+  }
+
+  .block-icon {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .block-icon.content { background: linear-gradient(135deg, var(--ccf-navy), var(--ccf-blue)); }
+
+  .block-icon svg { width: 16px; height: 16px; stroke: white; }
+
+  .block-header h2 {
+    font-size: 16.5px;
+    font-weight: 700;
+    margin: 0;
+  }
+
+  label.field-label {
+    display: block;
+    font-size: 13.5px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: var(--ink);
+  }
+
+  .field-group {
+    margin-bottom: 22px;
+  }
+
+  .input-row {
+    display: flex;
+    gap: 10px;
+  }
+
+  textarea, input[type="text"], input[type="url"], select {
+    width: 100%;
+    font-family: inherit;
+    font-size: 14.5px;
+    padding: 12px 14px;
+    border: 1.5px solid var(--hairline);
+    border-radius: 10px;
+    background: var(--white);
+    color: var(--ink);
+    resize: none;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  textarea:focus, input:focus, select:focus {
+    outline: none;
+    border-color: var(--ccf-blue);
+    box-shadow: 0 0 0 3px rgba(0, 114, 206, 0.14);
+  }
+
+  textarea::placeholder, input::placeholder {
+    color: var(--slate-light);
+  }
+
+  #smsMessage {
+    height: 120px;
+    line-height: 1.5;
+  }
+
+  .field-footer {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 6px;
+  }
+
+  .field-hint {
+    font-size: 12.5px;
+    color: var(--slate);
+  }
+
+  .char-count {
+    font-size: 12.5px;
+    font-variant-numeric: tabular-nums;
+    color: var(--slate);
+    font-weight: 600;
+  }
+
+  .char-count.warn { color: var(--ccf-orange); }
+
+  .segment-note {
+    font-size: 12px;
+    color: var(--slate-light);
+    margin-top: 4px;
+  }
+
+  select {
+    appearance: none;
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="%236B6478" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>');
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    padding-right: 38px;
+    cursor: pointer;
+  }
+
+  .helper-text {
+    font-size: 12.5px;
+    color: var(--slate);
+    margin-top: 6px;
+  }
+
+  /* ---------- RIGHT: PREVIEW PANEL ---------- */
+  .preview-panel {
+    position: sticky;
+    top: 65px;
+    height: calc(100vh - 65px);
+    background: linear-gradient(180deg, var(--ccf-navy-deep) 0%, var(--ccf-navy) 55%, var(--ccf-blue) 130%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    overflow: hidden;
+  }
+
+  .preview-brandbar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 6px;
+    background: linear-gradient(90deg, var(--ccf-orange) 0%, #FFB25A 100%);
+  }
+
+  .live-pill {
+    position: absolute;
+    top: 32px;
+    right: 40px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    background: rgba(255, 255, 255, 0.12);
+    color: white;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 8px 16px;
+    border-radius: 100px;
+    backdrop-filter: blur(6px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+  }
+
+  .live-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #4ADE80;
+    box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.7);
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%   { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.55); }
+    70%  { box-shadow: 0 0 0 8px rgba(74, 222, 128, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0); }
+  }
+
+  .phone {
+    position: relative;
+    width: 320px;
+    height: 650px;
+    background: linear-gradient(160deg, #0A1620, #001C33);
+    border-radius: 46px;
+    padding: 12px;
+    box-shadow:
+      0 30px 60px -20px rgba(0, 20, 40, 0.6),
+      0 0 0 2px rgba(255, 255, 255, 0.06) inset;
+  }
+
+  .phone-notch {
+    position: absolute;
+    top: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 120px;
+    height: 26px;
+    background: #001C33;
+    border-radius: 0 0 16px 16px;
+    z-index: 5;
+  }
+
+  .phone-screen {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(180deg, #003057 0%, #00253F 100%);
+    border-radius: 36px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .status-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 26px 8px;
+    color: white;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .status-icons {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .thread {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 8px 18px 24px;
+  }
+
+  .contact-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 4px 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    margin-bottom: 24px;
+  }
+
+  .contact-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--white);
+    padding: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.25);
+  }
+
+  .contact-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+
+  .contact-name {
+    color: white;
+    font-size: 14.5px;
+    font-weight: 600;
+  }
+
+  .contact-sub {
+    color: rgba(255, 255, 255, 0.45);
+    font-size: 11.5px;
+    margin-top: 1px;
+  }
+
+  .bubble-row {
+    display: flex;
+    justify-content: flex-start;
+  }
+
+  .sms-bubble {
+    max-width: 78%;
+    background: var(--white);
+    color: var(--ccf-navy-deep);
+    font-size: 14.5px;
+    line-height: 1.42;
+    padding: 11px 14px;
+    border-radius: 4px 18px 18px 18px;
+    border-left: 3px solid var(--ccf-orange);
+    word-wrap: break-word;
+    white-space: pre-wrap;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.12);
+  }
+
+  .bubble-link {
+    display: block;
+    margin-top: 8px;
+    color: var(--ccf-blue);
+    font-size: 13.5px;
+    text-decoration: underline;
+    word-break: break-all;
+  }
+
+  .bubble-timestamp {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.55);
+    margin-top: 8px;
+    padding-left: 4px;
+  }
+
+  @media (max-width: 900px) {
+    .app { grid-template-columns: 1fr; }
+    .preview-panel { position: relative; height: auto; padding: 60px 24px; }
+    .form-panel { padding: 32px 24px 40px; max-width: 100%; }
+  }
+</style>
 </head>
 <body>
-    <label for="smsMessage">Enter your SMS Message:</label>
-    <textarea id="smsMessage" placeholder="Type your text message here..."></textarea>
 
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/postmonger@0.0.16/postmonger.min.js"></script>
-    <script src="customActivity.js"></script>
+<div class="site-header">
+  <div class="header-accent"></div>
+  <img src="https://www.crohnscolitisfoundation.org/themes/custom/particle/dist/app-drupal/assets/ccf-logo.png?d9e1d0d25ca99f9e50620c56d6d9ba81=" alt="Crohn's & Colitis Foundation">
+  <div class="header-divider"></div>
+  <span class="header-title">SMS Message Center</span>
+</div>
+
+<div class="app">
+
+  <!-- ===== LEFT: FORM PANEL ===== -->
+  <div class="form-panel">
+    <p class="eyebrow">SMS Configuration</p>
+    <h1>Send an SMS message</h1>
+    <p class="subtitle">Write your message and see how it lands on a phone before you send it.</p>
+
+    <!-- Message Content -->
+    <section class="block">
+      <div class="block-header">
+        <div class="block-icon content">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        </div>
+        <h2>Message content</h2>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label" for="smsMessage">Message</label>
+        <div class="input-row">
+          <textarea id="smsMessage" maxlength="480" placeholder="Type your text message here..."></textarea>
+        </div>
+        <div class="field-footer">
+          <span class="field-hint">The body text of your SMS message</span>
+          <span class="char-count" id="charCount">0/480</span>
+        </div>
+        <div class="segment-note" id="segmentNote">1 segment · fits in a single SMS</div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ===== RIGHT: PREVIEW PANEL ===== -->
+  <div class="preview-panel">
+    <div class="preview-brandbar"></div>
+    <span class="live-pill">
+      <span class="live-dot"></span> Live preview
+    </span>
+
+    <div class="phone">
+      <div class="phone-notch"></div>
+      <div class="phone-screen">
+        <div class="status-bar">
+          <span id="statusDay">Today</span>
+          <span class="status-icons">
+            <svg width="16" height="11" viewBox="0 0 16 11" fill="none"><rect x="0" y="6" width="3" height="5" rx="0.5" fill="white"/><rect x="4.5" y="4" width="3" height="7" rx="0.5" fill="white"/><rect x="9" y="2" width="3" height="9" rx="0.5" fill="white"/><rect x="13.5" y="0" width="2" height="11" rx="0.5" fill="white" opacity="0.4"/></svg>
+            <span id="statusTime">--:--</span>
+          </span>
+        </div>
+
+        <div class="thread">
+          <div class="contact-header">
+            <div class="contact-avatar">
+              <img src="https://www.crohnscolitisfoundation.org/themes/custom/particle/dist/app-drupal/assets/ccf-logo.png?d9e1d0d25ca99f9e50620c56d6d9ba81=" alt="Crohn's & Colitis Foundation logo">
+            </div>
+            <div>
+              <div class="contact-name">Crohn's &amp; Colitis Foundation</div>
+              <div class="contact-sub">Text Message</div>
+            </div>
+          </div>
+
+          <div class="bubble-row">
+            <div class="sms-bubble" id="smsBubble">
+              <div id="smsBubbleText">Type your text message here...</div>
+            </div>
+          </div>
+          <div class="bubble-timestamp">Delivered · now</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/postmonger@0.0.16/postmonger.min.js"></script>
+<script>
+(function () {
+  const textarea = document.getElementById('smsMessage');
+  const charCount = document.getElementById('charCount');
+  const segmentNote = document.getElementById('segmentNote');
+  const statusDay = document.getElementById('statusDay');
+  const statusTime = document.getElementById('statusTime');
+
+  function segmentInfo(len) {
+    if (len === 0) return { count: 1, label: '1 segment · fits in a single SMS' };
+    const perSegment = 160;
+    const segments = Math.max(1, Math.ceil(len / perSegment));
+    if (segments === 1) return { count: 1, label: `1 segment · fits in a single SMS (${160 - len} characters left)` };
+    return { count: segments, label: `${segments} segments · message will be split into ${segments} texts` };
+  }
+
+  function render() {
+    const msg = textarea.value;
+    const len = msg.length;
+    charCount.textContent = `${len}/480`;
+    charCount.classList.toggle('warn', len > 400);
+
+    const info = segmentInfo(len);
+    segmentNote.textContent = info.label;
+    segmentNote.style.color = info.count > 1 ? '#F58220' : '';
+
+    updatePreview(msg);
+  }
+
+  function updatePreview(msg) {
+    const bubble = document.getElementById('smsBubbleText');
+    const bubbleWrap = document.getElementById('smsBubble');
+    if (!bubble) return;
+
+    bubbleWrap.style.display = msg.trim().length ? 'inline-block' : 'none';
+    bubble.textContent = msg || '';
+  }
+
+  function updateClock() {
+    const now = new Date();
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    statusDay.textContent = dayNames[now.getDay()];
+
+    let hours = now.getHours();
+    const minutes = now.getMinutes().toString().padStart(2, '0');
+    hours = hours % 12;
+    if (hours === 0) hours = 12;
+    statusTime.textContent = `${hours}:${minutes}`;
+  }
+
+  textarea.addEventListener('input', render);
+  render();
+
+  updateClock();
+  setInterval(updateClock, 1000 * 15);
+})();
+</script>
+
 </body>
 </html>
