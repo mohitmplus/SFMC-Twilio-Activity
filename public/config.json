@@ -14,7 +14,7 @@
     "arguments": {
         "execute": {
             "inArguments": [
-                { "phoneNumber": "{{Contact.Attribute.EntryDataExtensionName.Phone}}" },
+                { "phoneNumber": "{{Context.DefaultMobileNumber}}" },
                 { "message": "" }
             ],
             "outArguments": [],
