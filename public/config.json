@@ -1,7 +1,7 @@
 {
     "workflowApiVersion": "1.1",
     "metaData": {
-        "icon": "https://scabby-studied-virus.ngrok-free.dev/icon.png",
+        "icon": "https://sfmc-twilio-activity.onrender.com/icon.png",
         "category": "message"
     },
     "type": "REST",
@@ -18,7 +18,7 @@
                 { "message": "" }
             ],
             "outArguments": [],
-            "url": "https://scabby-studied-virus.ngrok-free.dev/execute",
+            "url": "https://sfmc-twilio-activity.onrender.com/execute",
             "verb": "POST",
             "body": "",
             "header": "",
@@ -28,9 +28,9 @@
         }
     },
     "configurationArguments": {
-        "save": { "url": "https://scabby-studied-virus.ngrok-free.dev/save" },
-        "publish": { "url": "https://scabby-studied-virus.ngrok-free.dev/publish" },
-        "validate": { "url": "https://scabby-studied-virus.ngrok-free.dev/validate" }
+        "save": { "url": "https://sfmc-twilio-activity.onrender.com/save" },
+        "publish": { "url": "https://sfmc-twilio-activity.onrender.com/publish" },
+        "validate": { "url": "https://sfmc-twilio-activity.onrender.com/validate" }
     },
     "userInterfaces": {
         "configModal": {
