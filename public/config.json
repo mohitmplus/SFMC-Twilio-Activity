@@ -1,0 +1,43 @@
+{
+    "workflowApiVersion": "1.1",
+    "metaData": {
+        "icon": "https://scabby-studied-virus.ngrok-free.dev/icon.png",
+        "category": "message"
+    },
+    "type": "REST",
+    "lang": {
+        "en-US": {
+            "name": "Twilio SMS",
+            "description": "Send a custom SMS via Twilio"
+        }
+    },
+    "arguments": {
+        "execute": {
+            "inArguments": [
+                { "phoneNumber": "{{Contact.Attribute.EntryDataExtensionName.Phone}}" },
+                { "message": "" }
+            ],
+            "outArguments": [],
+            "url": "https://scabby-studied-virus.ngrok-free.dev/execute",
+            "verb": "POST",
+            "body": "",
+            "header": "",
+            "format": "json",
+            "useJwt": true,
+            "timeout": 10000
+        }
+    },
+    "configurationArguments": {
+        "save": { "url": "https://scabby-studied-virus.ngrok-free.dev/save" },
+        "publish": { "url": "https://scabby-studied-virus.ngrok-free.dev/publish" },
+        "validate": { "url": "https://scabby-studied-virus.ngrok-free.dev/validate" }
+    },
+    "userInterfaces": {
+        "configModal": {
+            "url": "/public/index.html",
+            "height": 300,
+            "width": 500,
+            "fullscreen": false
+        }
+    }
+}
