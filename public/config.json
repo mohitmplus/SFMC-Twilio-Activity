@@ -32,12 +32,12 @@
         "publish": { "url": "https://sfmc-twilio-activity.onrender.com/publish" },
         "validate": { "url": "https://sfmc-twilio-activity.onrender.com/validate" }
     },
-    "userInterfaces": {
-        "configModal": {
-            "url": "/public/index.html",
-            "height": 300,
-            "width": 500,
-            "fullscreen": false
-        }
+   "userInterfaces": {
+    "configModal": {
+        "url": "https://sfmc-twilio-activity.onrender.com/index.html",
+        "height": 300,
+        "width": 500,
+        "fullscreen": false
     }
+}
 }
