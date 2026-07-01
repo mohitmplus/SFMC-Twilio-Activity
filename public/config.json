@@ -35,8 +35,8 @@
    "userInterfaces": {
     "configModal": {
         "url": "https://sfmc-twilio-activity.onrender.com/index.html",
-        "height": 300,
-        "width": 500,
+        "height": 600,
+        "width": 600,
         "fullscreen": false
     }
 }
