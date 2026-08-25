@@ -1,108 +1,73 @@
-const connection = new Postmonger.Session();
+const connection =
+    new Postmonger.Session();
 
 let payload = {};
 
 let eventDefinitionKey = "";
 
+let eventDefinitionId = "";
+
 let eventFields = [];
 
-let variables = [];
+let variables = {};
 
-let variableCounter = 0;
+let activityInitialized = false;
 
 
 /*
 |--------------------------------------------------------------------------
-| INITIALIZE
+| DOM READY
 |--------------------------------------------------------------------------
 */
 
 $(document).ready(function () {
 
     console.log(
-        "Twilio Custom Activity UI initialized"
+        "Twilio Custom Activity UI loaded"
     );
 
 
-    connection.trigger("ready");
+    connection.trigger(
+        "ready"
+    );
+
+
+    /*
+     * Ask Journey Builder for:
+     *
+     * 1. Current journey
+     * 2. Current entry event definition
+     */
 
     connection.trigger(
         "requestInteraction"
     );
 
-    /*
-     * This is the important Postmonger event.
-     *
-     * Journey Builder returns the Entry Event Definition.
-     */
 
     connection.trigger(
         "requestTriggerEventDefinition"
     );
 
 
-    initializeUI();
+    $("#smsMessage").on(
+        "input",
+        renderPreview
+    );
+
+
+    $("#addVariable").on(
+        "click",
+        addVariable
+    );
+
+
+    renderPreview();
 });
 
 
 /*
 |--------------------------------------------------------------------------
-| REQUEST TRIGGER EVENT DEFINITION
-|--------------------------------------------------------------------------
-*/
-
-connection.on(
-    "requestedTriggerEventDefinition",
-    function (eventDefinition) {
-
-        console.log(
-            "Trigger Event Definition:",
-            eventDefinition
-        );
-
-
-        if (
-            eventDefinition &&
-            eventDefinition.eventDefinitionKey
-        ) {
-
-            eventDefinitionKey =
-                eventDefinition.eventDefinitionKey;
-
-        }
-
-
-        if (
-            !eventDefinitionKey &&
-            eventDefinition &&
-            eventDefinition.key
-        ) {
-
-            eventDefinitionKey =
-                eventDefinition.key;
-
-        }
-
-
-        console.log(
-            "Event Definition Key:",
-            eventDefinitionKey
-        );
-
-
-        if (eventDefinitionKey) {
-
-            loadEventFields();
-
-        }
-
-    }
-);
-
-
-/*
-|--------------------------------------------------------------------------
-| GET JOURNEY BLUEPRINT
+| REQUESTED INTERACTION
 |--------------------------------------------------------------------------
 */
 
@@ -116,44 +81,102 @@ connection.on(
         );
 
 
-        if (
-            !eventDefinitionKey &&
-            interaction &&
-            interaction.triggers &&
-            interaction.triggers.length > 0
-        ) {
-
-            const trigger =
-                interaction.triggers[0];
-
+        try {
 
             if (
-                trigger.metaData &&
-                trigger.metaData.eventDefinitionKey
+                interaction &&
+                interaction.triggers &&
+                interaction.triggers.length
             ) {
 
-                eventDefinitionKey =
-                    trigger
-                        .metaData
-                        .eventDefinitionKey;
+                const trigger =
+                    interaction.triggers[0];
 
+
+                const key =
+                    trigger
+                        ?.metaData
+                        ?.eventDefinitionKey;
+
+
+                if (key) {
+
+                    eventDefinitionKey =
+                        key;
+
+                    console.log(
+                        "Event Definition Key from interaction:",
+                        eventDefinitionKey
+                    );
+                }
             }
 
+        } catch (error) {
+
+            console.error(
+                "Unable to read interaction:",
+                error
+            );
         }
 
 
+        loadEventFields();
+    }
+);
+
+
+/*
+|--------------------------------------------------------------------------
+| REQUESTED TRIGGER EVENT DEFINITION
+|--------------------------------------------------------------------------
+*/
+
+connection.on(
+    "requestedTriggerEventDefinition",
+    function (eventDefinition) {
+
         console.log(
-            "Final Event Definition Key:",
+            "Trigger Event Definition received:",
+            eventDefinition
+        );
+
+
+        if (!eventDefinition) {
+
+            setEventStatus(
+                "Unable to retrieve the Journey Entry Event Definition.",
+                "error"
+            );
+
+            return;
+        }
+
+
+        eventDefinitionId =
+            eventDefinition.id ||
+            "";
+
+
+        eventDefinitionKey =
+            eventDefinition.eventDefinitionKey ||
+            eventDefinition.key ||
+            eventDefinitionKey ||
+            "";
+
+
+        console.log(
+            "Event Definition ID:",
+            eventDefinitionId
+        );
+
+
+        console.log(
+            "Event Definition Key:",
             eventDefinitionKey
         );
 
 
-        if (eventDefinitionKey) {
-
-            loadEventFields();
-
-        }
-
+        loadEventFields();
     }
 );
 
@@ -176,200 +199,234 @@ connection.on(
 
         if (data) {
 
-            payload = data;
-
+            payload =
+                data;
         }
 
 
-        try {
-
-            const inArguments =
-                payload
-                    ?.arguments
-                    ?.execute
-                    ?.inArguments;
+        activityInitialized =
+            true;
 
 
-            if (
-                !Array.isArray(
-                    inArguments
-                )
-            ) {
-
-                return;
-
-            }
-
-
-            /*
-             * Existing message
-             */
-
-            const messageArg =
-                inArguments.find(
-                    item =>
-                        item &&
-                        Object.prototype.hasOwnProperty
-                            .call(
-                                item,
-                                "message"
-                            )
-                );
-
-
-            if (
-                messageArg &&
-                messageArg.message !== undefined
-            ) {
-
-                $("#smsMessage")
-                    .val(
-                        messageArg.message
-                    );
-
-            }
-
-
-            /*
-             * Existing personalization variables
-             *
-             * Example:
-             *
-             * {
-             *   personalization_FirstName:
-             *      "{{Event.xxx.FirstName}}"
-             * }
-             */
-
-            const existingVariables = [];
-
-
-            inArguments.forEach(
-                item => {
-
-                    if (!item) {
-
-                        return;
-
-                    }
-
-
-                    Object.keys(item)
-                        .forEach(
-                            key => {
-
-                                if (
-                                    key.startsWith(
-                                        "personalization_"
-                                    )
-                                ) {
-
-                                    const variableName =
-                                        key.replace(
-                                            "personalization_",
-                                            ""
-                                        );
-
-
-                                    existingVariables.push({
-
-                                        name:
-                                            variableName,
-
-                                        binding:
-                                            item[key]
-
-                                    });
-
-                                }
-
-                            }
-                        );
-
-                }
-            );
-
-
-            if (
-                existingVariables.length
-            ) {
-
-                variables =
-                    existingVariables;
-
-
-                renderVariables();
-
-            }
-
-
-            renderMessage();
-
-        }
-
-        catch (error) {
-
-            console.error(
-                "Unable to load existing activity:",
-                error
-            );
-
-        }
-
+        loadExistingConfiguration();
     }
 );
 
 
 /*
 |--------------------------------------------------------------------------
-| UI INITIALIZATION
+| LOAD EXISTING CONFIGURATION
 |--------------------------------------------------------------------------
 */
 
-function initializeUI() {
+function loadExistingConfiguration() {
 
-    const textarea =
-        document.getElementById(
-            "smsMessage"
+    try {
+
+        const inArguments =
+            payload
+                ?.arguments
+                ?.execute
+                ?.inArguments;
+
+
+        if (
+            !Array.isArray(
+                inArguments
+            )
+        ) {
+
+            return;
+        }
+
+
+        console.log(
+            "Existing inArguments:",
+            JSON.stringify(
+                inArguments,
+                null,
+                2
+            )
         );
 
 
-    const addButton =
-        document.getElementById(
-            "addVariableBtn"
-        );
+        const messageArg =
+            inArguments.find(
+                item =>
+                    item &&
+                    Object.prototype.hasOwnProperty.call(
+                        item,
+                        "messageTemplate"
+                    )
+            );
 
 
-    if (textarea) {
+        /*
+         * Backward compatibility:
+         *
+         * Existing activity may have "message"
+         * instead of "messageTemplate".
+         */
 
-        textarea.addEventListener(
-            "input",
-            function () {
+        const oldMessageArg =
+            inArguments.find(
+                item =>
+                    item &&
+                    Object.prototype.hasOwnProperty.call(
+                        item,
+                        "message"
+                    )
+            );
 
-                renderMessage();
+
+        const message =
+            messageArg
+                ?.messageTemplate
+            ??
+            oldMessageArg
+                ?.message
+            ??
+            "";
+
+
+        $("#smsMessage")
+            .val(
+                message
+            )
+            .trigger(
+                "input"
+            );
+
+
+        /*
+         * Load saved variables.
+         *
+         * Example:
+         *
+         * {
+         *   "__variable__FirstName":
+         *      "{{Event.DEAudience-xxx.FirstName}}"
+         * }
+         */
+
+        variables = {};
+
+
+        inArguments.forEach(
+            function (item) {
+
+                if (
+                    !item ||
+                    typeof item !== "object"
+                ) {
+
+                    return;
+                }
+
+
+                Object.keys(item)
+                    .forEach(
+                        function (key) {
+
+                            if (
+                                !key.startsWith(
+                                    "__variable__"
+                                )
+                            ) {
+
+                                return;
+                            }
+
+
+                            const variableName =
+                                key.replace(
+                                    "__variable__",
+                                    ""
+                                );
+
+
+                            const binding =
+                                item[key];
+
+
+                            variables[
+                                variableName
+                            ] = {
+
+                                field:
+                                    extractFieldFromBinding(
+                                        binding
+                                    ),
+
+                                binding:
+                                    binding
+
+                            };
+
+                        }
+                    );
 
             }
         );
 
+
+        renderVariableList();
+
+        renderPreview();
+
+    }
+
+    catch (error) {
+
+        console.error(
+            "Unable to load existing configuration:",
+            error
+        );
+    }
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| EXTRACT FIELD FROM BINDING
+|--------------------------------------------------------------------------
+*/
+
+function extractFieldFromBinding(
+    binding
+) {
+
+    if (
+        typeof binding !==
+        "string"
+    ) {
+
+        return "";
     }
 
 
-    if (addButton) {
+    /*
+     * Expected:
+     *
+     * {{Event.DEAudience-xxx.FirstName}}
+     */
 
-        addButton.addEventListener(
-            "click",
-            function () {
-
-                addVariable();
-
-            }
+    const match =
+        binding.match(
+            /^\{\{Event\.[^.]+\.(.+)\}\}$/
         );
 
+
+    if (
+        match &&
+        match[1]
+    ) {
+
+        return match[1];
     }
 
 
-    renderMessage();
-
+    return "";
 }
 
 
@@ -379,48 +436,41 @@ function initializeUI() {
 |--------------------------------------------------------------------------
 */
 
+let fieldsLoading =
+    false;
+
+
 async function loadEventFields() {
 
-    if (!eventDefinitionKey) {
+    if (
+        fieldsLoading
+    ) {
 
-        console.warn(
-            "Cannot load fields: Event Definition Key is empty"
+        return;
+    }
+
+
+    if (
+        !eventDefinitionKey
+    ) {
+
+        setEventStatus(
+            "Waiting for Journey Entry Event Definition...",
+            "loading"
         );
 
         return;
-
     }
 
 
-    const loading =
-        document.getElementById(
-            "fieldLoading"
-        );
+    fieldsLoading =
+        true;
 
 
-    const errorElement =
-        document.getElementById(
-            "fieldError"
-        );
-
-
-    if (loading) {
-
-        loading.style.display =
-            "block";
-
-    }
-
-
-    if (errorElement) {
-
-        errorElement.style.display =
-            "none";
-
-        errorElement.textContent =
-            "";
-
-    }
+    setEventStatus(
+        "Loading Journey Event fields...",
+        "loading"
+    );
 
 
     try {
@@ -433,7 +483,7 @@ async function loadEventFields() {
 
 
         console.log(
-            "Loading Event fields:",
+            "Loading fields from:",
             url
         );
 
@@ -442,11 +492,17 @@ async function loadEventFields() {
             await fetch(
                 url,
                 {
-                    method: "GET",
+
+                    method:
+                        "GET",
+
                     headers: {
+
                         "Accept":
                             "application/json"
+
                     }
+
                 }
             );
 
@@ -461,13 +517,15 @@ async function loadEventFields() {
         );
 
 
-        if (!response.ok) {
+        if (
+            !response.ok ||
+            !data.success
+        ) {
 
             throw new Error(
                 data.error ||
                 "Unable to retrieve Event fields"
             );
-
         }
 
 
@@ -479,48 +537,137 @@ async function loadEventFields() {
                 : [];
 
 
-        console.log(
-            "Available Event fields:",
-            eventFields
+        if (
+            !eventFields.length
+        ) {
+
+            throw new Error(
+                "No fields were returned for the Journey Event Data Extension."
+            );
+        }
+
+
+        populateFieldDropdown();
+
+
+        setEventStatus(
+            `${eventFields.length} Journey Event fields loaded successfully.`,
+            "success"
         );
-
-
-        renderVariables();
 
     }
 
     catch (error) {
 
         console.error(
-            "Unable to load Event fields:",
+            "EVENT FIELD LOAD ERROR:",
             error
         );
 
 
-        if (errorElement) {
-
-            errorElement.style.display =
-                "block";
-
-            errorElement.textContent =
-                "Unable to load Journey Event fields. " +
-                error.message;
-
-        }
+        setEventStatus(
+            "Unable to load Journey Event fields. " +
+            error.message,
+            "error"
+        );
 
     }
 
     finally {
 
-        if (loading) {
+        fieldsLoading =
+            false;
+    }
+}
 
-            loading.style.display =
-                "none";
+
+/*
+|--------------------------------------------------------------------------
+| POPULATE FIELD DROPDOWN
+|--------------------------------------------------------------------------
+*/
+
+function populateFieldDropdown() {
+
+    const select =
+        $("#variableField");
+
+
+    select.empty();
+
+
+    select.append(
+        $("<option>", {
+
+            value:
+                "",
+
+            text:
+                "Select Journey Event field"
+
+        })
+    );
+
+
+    eventFields.forEach(
+        function (field) {
+
+            const fieldName =
+                field.name ||
+                field.Name;
+
+
+            if (!fieldName) {
+
+                return;
+            }
+
+
+            const type =
+                field.type ||
+                field.FieldType ||
+                "";
+
+
+            select.append(
+
+                $("<option>", {
+
+                    value:
+                        fieldName,
+
+                    text:
+                        type
+                            ? `${fieldName} (${type})`
+                            : fieldName
+
+                })
+
+            );
 
         }
+    );
 
+
+    /*
+     * Restore existing selected fields.
+     */
+
+    const firstVariable =
+        Object.keys(
+            variables
+        )[0];
+
+
+    if (
+        firstVariable &&
+        variables[firstVariable]?.field
+    ) {
+
+        select.val(
+            variables[firstVariable].field
+        );
     }
-
 }
 
 
@@ -532,26 +679,148 @@ async function loadEventFields() {
 
 function addVariable() {
 
-    variableCounter++;
+    const variableName =
+        $("#variableName")
+            .val()
+            .trim();
 
 
-    variables.push({
+    const fieldName =
+        $("#variableField")
+            .val();
 
-        id:
-            variableCounter,
 
-        name:
-            "Variable" +
-            variableCounter,
+    if (!variableName) {
+
+        alert(
+            "Please enter a variable name."
+        );
+
+        return;
+    }
+
+
+    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(
+        variableName
+    )) {
+
+        alert(
+            "Variable name can contain only letters, numbers and underscore, and cannot start with a number."
+        );
+
+        return;
+    }
+
+
+    if (!fieldName) {
+
+        alert(
+            "Please select a Journey Event field."
+        );
+
+        return;
+    }
+
+
+    /*
+     * Prevent duplicate variable names.
+     */
+
+    if (
+        variables[
+            variableName
+        ] &&
+        variables[
+            variableName
+        ].field !== fieldName
+    ) {
+
+        const overwrite =
+            confirm(
+                `Variable "${variableName}" already exists. Replace it?`
+            );
+
+
+        if (!overwrite) {
+
+            return;
+        }
+    }
+
+
+    const binding =
+        buildEventBinding(
+            fieldName
+        );
+
+
+    variables[
+        variableName
+    ] = {
 
         field:
-            ""
+            fieldName,
 
-    });
+        binding:
+            binding
+
+    };
 
 
-    renderVariables();
+    console.log(
+        "Variable added:",
+        variableName,
+        variables[
+            variableName
+        ]
+    );
 
+
+    /*
+     * Clear inputs.
+     */
+
+    $("#variableName")
+        .val("");
+
+    $("#variableField")
+        .val("");
+
+
+    renderVariableList();
+
+    renderPreview();
+
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| BUILD JOURNEY EVENT BINDING
+|--------------------------------------------------------------------------
+*/
+
+function buildEventBinding(
+    fieldName
+) {
+
+    if (
+        !eventDefinitionKey
+    ) {
+
+        throw new Error(
+            "Journey Event Definition Key is not available."
+        );
+    }
+
+
+    return (
+        "{{Event." +
+        eventDefinitionKey +
+        "." +
+        fieldName +
+        "}}"
+    );
 }
 
 
@@ -562,508 +831,322 @@ function addVariable() {
 */
 
 function removeVariable(
-    index
+    variableName
 ) {
 
-    variables.splice(
-        index,
-        1
-    );
+    delete variables[
+        variableName
+    ];
 
 
-    renderVariables();
+    renderVariableList();
 
+    renderPreview();
 }
 
 
 /*
 |--------------------------------------------------------------------------
-| UPDATE VARIABLE NAME
+| RENDER VARIABLE LIST
 |--------------------------------------------------------------------------
 */
 
-function updateVariableName(
-    index,
-    value
-) {
-
-    if (
-        variables[index]
-    ) {
-
-        variables[index].name =
-            value;
-
-    }
-
-}
-
-
-/*
-|--------------------------------------------------------------------------
-| UPDATE VARIABLE FIELD
-|--------------------------------------------------------------------------
-*/
-
-function updateVariableField(
-    index,
-    value
-) {
-
-    if (
-        variables[index]
-    ) {
-
-        variables[index].field =
-            value;
-
-    }
-
-}
-
-
-/*
-|--------------------------------------------------------------------------
-| INSERT VARIABLE
-|--------------------------------------------------------------------------
-*/
-
-function insertVariable(
-    index
-) {
-
-    const variable =
-        variables[index];
-
-
-    if (
-        !variable ||
-        !variable.name
-    ) {
-
-        alert(
-            "Please enter a variable name."
-        );
-
-        return;
-
-    }
-
-
-    if (
-        !variable.field
-    ) {
-
-        alert(
-            "Please select a Journey Event field."
-        );
-
-        return;
-
-    }
-
-
-    const textarea =
-        document.getElementById(
-            "smsMessage"
-        );
-
-
-    if (!textarea) {
-
-        return;
-
-    }
-
-
-    const placeholder =
-        "{{" +
-        variable.name.trim() +
-        "}}";
-
-
-    insertAtCursor(
-        textarea,
-        placeholder
-    );
-
-
-    renderMessage();
-
-}
-
-
-/*
-|--------------------------------------------------------------------------
-| INSERT TEXT AT CURSOR
-|--------------------------------------------------------------------------
-*/
-
-function insertAtCursor(
-    textarea,
-    text
-) {
-
-    const start =
-        textarea.selectionStart;
-
-    const end =
-        textarea.selectionEnd;
-
-
-    const currentValue =
-        textarea.value;
-
-
-    textarea.value =
-        currentValue.substring(
-            0,
-            start
-        ) +
-        text +
-        currentValue.substring(
-            end
-        );
-
-
-    const newPosition =
-        start +
-        text.length;
-
-
-    textarea.focus();
-
-
-    textarea.selectionStart =
-        newPosition;
-
-    textarea.selectionEnd =
-        newPosition;
-
-}
-
-
-/*
-|--------------------------------------------------------------------------
-| RENDER VARIABLE ROWS
-|--------------------------------------------------------------------------
-*/
-
-function renderVariables() {
+function renderVariableList() {
 
     const container =
-        document.getElementById(
-            "variableRows"
-        );
+        $("#variableList");
 
 
-    if (!container) {
-
-        return;
-
-    }
+    container.empty();
 
 
-    container.innerHTML =
-        "";
+    Object.keys(
+        variables
+    ).forEach(
+        function (variableName) {
+
+            const variable =
+                variables[
+                    variableName
+                ];
 
 
-    variables.forEach(
-        (
-            variable,
-            index
-        ) => {
-
-            const row =
-                document.createElement(
-                    "div"
-                );
-
-
-            row.className =
-                "variable-row";
-
-
-            /*
-             * Variable name
-             */
-
-            const nameInput =
-                document.createElement(
-                    "input"
-                );
-
-
-            nameInput.type =
-                "text";
-
-            nameInput.className =
-                "variable-name";
-
-            nameInput.value =
-                variable.name ||
-                "";
-
-
-            nameInput.placeholder =
-                "Variable name";
-
-
-            nameInput.addEventListener(
-                "input",
-                function () {
-
-                    updateVariableName(
-                        index,
-                        this.value
+            const item =
+                $("<div>")
+                    .addClass(
+                        "variable-item"
                     );
 
-                }
-            );
 
-
-            /*
-             * Field dropdown
-             */
-
-            const select =
-                document.createElement(
-                    "select"
-                );
-
-
-            select.className =
-                "variable-field";
-
-
-            const defaultOption =
-                document.createElement(
-                    "option"
-                );
-
-
-            defaultOption.value =
-                "";
-
-
-            defaultOption.textContent =
-                eventFields.length
-                    ? "Select Journey Event field"
-                    : "Loading fields...";
-
-
-            select.appendChild(
-                defaultOption
-            );
-
-
-            eventFields.forEach(
-                field => {
-
-                    const option =
-                        document.createElement(
-                            "option"
-                        );
-
-
-                    option.value =
-                        field.name;
-
-
-                    option.textContent =
-                        field.label ||
-                        field.name;
-
-
-                    if (
-                        variable.field ===
-                        field.name
-                    ) {
-
-                        option.selected =
-                            true;
-
-                    }
-
-
-                    select.appendChild(
-                        option
+            const left =
+                $("<div>")
+                    .addClass(
+                        "variable-item-left"
                     );
 
-                }
-            );
 
-
-            select.addEventListener(
-                "change",
-                function () {
-
-                    updateVariableField(
-                        index,
-                        this.value
-                    );
-
-                }
-            );
-
-
-            /*
-             * Insert button
-             */
-
-            const insertButton =
-                document.createElement(
-                    "button"
+            $("<div>")
+                .addClass(
+                    "variable-name"
+                )
+                .text(
+                    variableName
+                )
+                .appendTo(
+                    left
                 );
 
 
-            insertButton.type =
-                "button";
-
-            insertButton.className =
-                "variable-insert";
-
-            insertButton.textContent =
-                "Insert";
-
-
-            insertButton.addEventListener(
-                "click",
-                function () {
-
-                    insertVariable(
-                        index
-                    );
-
-                }
-            );
-
-
-            /*
-             * Remove
-             */
-
-            const removeButton =
-                document.createElement(
-                    "button"
+            $("<div>")
+                .addClass(
+                    "variable-field"
+                )
+                .text(
+                    "Journey Event field: " +
+                    variable.field
+                )
+                .appendTo(
+                    left
                 );
 
 
-            removeButton.type =
-                "button";
+            $("<div>")
+                .addClass(
+                    "variable-token"
+                )
+                .text(
+                    "{{" +
+                    variableName +
+                    "}}"
+                )
+                .appendTo(
+                    left
+                );
 
-            removeButton.className =
-                "variable-remove";
 
-            removeButton.textContent =
-                "×";
+            const remove =
+                $("<button>")
+                    .attr(
+                        "type",
+                        "button"
+                    )
+                    .addClass(
+                        "btn-danger"
+                    )
+                    .text(
+                        "Remove"
+                    );
 
 
-            removeButton.addEventListener(
+            remove.on(
                 "click",
                 function () {
 
                     removeVariable(
-                        index
+                        variableName
                     );
 
                 }
             );
 
 
-            row.appendChild(
-                nameInput
-            );
-
-            row.appendChild(
-                select
-            );
-
-            row.appendChild(
-                insertButton
-            );
-
-            row.appendChild(
-                removeButton
+            item.append(
+                left
             );
 
 
-            container.appendChild(
-                row
+            item.append(
+                remove
+            );
+
+
+            container.append(
+                item
             );
 
         }
     );
-
 }
 
 
 /*
 |--------------------------------------------------------------------------
-| RENDER MESSAGE PREVIEW
+| PREVIEW
 |--------------------------------------------------------------------------
 */
 
-function renderMessage() {
-
-    const textarea =
-        document.getElementById(
-            "smsMessage"
-        );
-
-
-    const charCount =
-        document.getElementById(
-            "charCount"
-        );
-
-
-    const bubble =
-        document.getElementById(
-            "smsBubbleText"
-        );
-
-
-    if (!textarea) {
-
-        return;
-
-    }
-
+function renderPreview() {
 
     const message =
-        textarea.value;
+        $("#smsMessage")
+            .val();
 
 
-    if (charCount) {
-
-        charCount.textContent =
-            message.length +
-            "/480";
+    const len =
+        message.length;
 
 
-        charCount.classList.toggle(
-            "warn",
-            message.length > 400
+    $("#charCount")
+        .text(
+            `${len}/480`
         );
 
+
+    $("#charCount")
+        .toggleClass(
+            "warn",
+            len > 400
+        );
+
+
+    let segments;
+
+
+    if (
+        len === 0
+    ) {
+
+        segments =
+            1;
+
+    }
+
+    else {
+
+        segments =
+            Math.max(
+                1,
+                Math.ceil(
+                    len / 160
+                )
+            );
     }
 
 
-    if (bubble) {
+    if (
+        segments === 1
+    ) {
 
-        bubble.textContent =
-            message ||
-            "Type your text message here...";
+        $("#segmentNote")
+            .text(
+                `1 segment · fits in a single SMS`
+            );
 
     }
 
+    else {
+
+        $("#segmentNote")
+            .text(
+                `${segments} segments · message will be split into ${segments} texts`
+            );
+    }
+
+
+    /*
+     * Preview variable values.
+     *
+     * We intentionally don't hard-code values.
+     *
+     * Preview displays [FirstName]
+     * until runtime.
+     */
+
+    let preview =
+        message;
+
+
+    Object.keys(
+        variables
+    ).forEach(
+        function (variableName) {
+
+            const token =
+                "{{" +
+                variableName +
+                "}}";
+
+
+            preview =
+                preview.split(
+                    token
+                )
+                .join(
+                    "[" +
+                    variableName +
+                    "]"
+                );
+
+        }
+    );
+
+
+    $("#smsBubbleText")
+        .text(
+            preview ||
+            "Type your text message here..."
+        );
 }
 
 
 /*
 |--------------------------------------------------------------------------
-| NEXT / DONE
+| STATUS
+|--------------------------------------------------------------------------
+*/
+
+function setEventStatus(
+    message,
+    type
+) {
+
+    const status =
+        $("#eventStatus");
+
+
+    status
+        .removeClass(
+            "status-loading status-success status-error"
+        );
+
+
+    if (
+        type === "success"
+    ) {
+
+        status.addClass(
+            "status-success"
+        );
+
+    }
+
+    else if (
+        type === "error"
+    ) {
+
+        status.addClass(
+            "status-error"
+        );
+
+    }
+
+    else {
+
+        status.addClass(
+            "status-loading"
+        );
+    }
+
+
+    status.text(
+        message
+    );
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| NEXT
 |--------------------------------------------------------------------------
 */
 
@@ -1084,32 +1167,68 @@ connection.on(
             );
 
             return;
+        }
 
+
+        if (
+            !eventDefinitionKey
+        ) {
+
+            alert(
+                "Journey Entry Event Definition could not be detected."
+            );
+
+            return;
         }
 
 
         /*
-         * Phone binding
+         * PHONE
          */
 
         let dynamicPhoneBinding =
             "{{Context.DefaultMobileNumber}}";
 
 
+        /*
+         * Use Event.Phone if available.
+         *
+         * We do NOT hard-code a phone value.
+         */
+
+        const phoneField =
+            eventFields.find(
+                field => {
+
+                    const name =
+                        field.name ||
+                        field.Name;
+
+                    return (
+                        name &&
+                        name.toLowerCase() ===
+                        "phone"
+                    );
+
+                }
+            );
+
+
         if (
-            eventDefinitionKey
+            phoneField
         ) {
 
             dynamicPhoneBinding =
-                "{{Event." +
-                eventDefinitionKey +
-                ".Phone}}";
+                buildEventBinding(
+                    phoneField.name ||
+                    phoneField.Name
+                );
 
         }
 
 
         /*
-         * ContactKey
+         * CONTACT KEY
          */
 
         const contactKeyBinding =
@@ -1117,7 +1236,7 @@ connection.on(
 
 
         /*
-         * Build inArguments
+         * BUILD IN ARGUMENTS
          */
 
         const inArguments = [
@@ -1133,7 +1252,7 @@ connection.on(
             },
 
             {
-                message:
+                messageTemplate:
                     userMessage
             }
 
@@ -1141,71 +1260,55 @@ connection.on(
 
 
         /*
-         * PERSONALIZATION
-         *
-         * IMPORTANT:
-         *
-         * Each selected Journey Event field
-         * is sent as its own data-bound argument.
+         * Add every personalization variable
+         * as its own Journey data binding.
          *
          * Example:
          *
-         * personalization_FirstName:
-         * {{Event.DEAudience-xxx.FirstName}}
-         *
-         * Journey Builder evaluates this at runtime.
+         * {
+         *   "__variable__FirstName":
+         *       "{{Event.DEAudience-xxx.FirstName}}"
+         * }
          */
 
-        variables.forEach(
-            variable => {
+        Object.keys(
+            variables
+        ).forEach(
+            function (variableName) {
 
-                if (
-                    !variable.name ||
-                    !variable.field
-                ) {
-
-                    return;
-
-                }
+                const variable =
+                    variables[
+                        variableName
+                    ];
 
 
-                if (
-                    !eventDefinitionKey
-                ) {
+                inArguments.push({
 
-                    return;
+                    [
+                        "__variable__" +
+                        variableName
+                    ]:
+                        variable.binding
 
-                }
-
-
-                const argumentName =
-                    "personalization_" +
-                    variable.name.trim();
-
-
-                const binding =
-                    "{{Event." +
-                    eventDefinitionKey +
-                    "." +
-                    variable.field +
-                    "}}";
-
-
-                const argument = {};
-
-
-                argument[
-                    argumentName
-                ] =
-                    binding;
-
-
-                inArguments.push(
-                    argument
-                );
+                });
 
             }
         );
+
+
+        /*
+         * Keep backward-compatible "message".
+         *
+         * The actual personalization is performed
+         * from messageTemplate + variables.
+         */
+
+        inArguments.push({
+
+            message:
+                userMessage
+
+        });
 
 
         payload.arguments =
@@ -1222,6 +1325,31 @@ connection.on(
             inArguments;
 
 
+        payload.arguments.execute.outArguments =
+            [];
+
+
+        payload.arguments.execute.url =
+            payload.arguments.execute.url ||
+            "/execute";
+
+
+        payload.arguments.execute.verb =
+            "POST";
+
+
+        payload.arguments.execute.format =
+            "json";
+
+
+        payload.arguments.execute.useJwt =
+            true;
+
+
+        payload.arguments.execute.timeout =
+            10000;
+
+
         payload.metaData =
             payload.metaData ||
             {};
@@ -1232,16 +1360,7 @@ connection.on(
 
 
         console.log(
-            "================================================"
-        );
-
-
-        console.log(
-            "FINAL ACTIVITY PAYLOAD"
-        );
-
-
-        console.log(
+            "Final Activity Payload:",
             JSON.stringify(
                 payload,
                 null,
@@ -1250,14 +1369,28 @@ connection.on(
         );
 
 
-        console.log(
-            "================================================"
-        );
-
-
         connection.trigger(
             "updateActivity",
             payload
+        );
+    }
+);
+
+
+/*
+|--------------------------------------------------------------------------
+| ERROR HANDLING
+|--------------------------------------------------------------------------
+*/
+
+window.addEventListener(
+    "error",
+    function (event) {
+
+        console.error(
+            "UI error:",
+            event.error ||
+            event.message
         );
 
     }
