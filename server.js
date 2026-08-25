@@ -63,6 +63,7 @@ const requiredEnvironmentVariables = [
     "SFMC_CLIENT_SECRET",
     "SFMC_AUTH_BASE_URI",
     "SFMC_REST_BASE_URI",
+
     "SFMC_CONSENT_DE_KEY",
     "SFMC_TRANSACTION_DE_KEY"
 
@@ -279,7 +280,6 @@ app.post(
 //
 // +91 6377783635
 // 916377783635
-// 6377783635
 //
 // Output:
 //
@@ -386,18 +386,33 @@ function generateTransactionId() {
 // =========================================================
 // LOG SMS TRANSACTION TO SFMC
 // =========================================================
+//
+// IMPORTANT:
+//
+// This function does NOT silently hide SFMC errors.
+//
+// It prints:
+//
+// 1. DE key
+// 2. REST URL
+// 3. Transaction ID
+// 4. Payload
+// 5. HTTP status
+// 6. SFMC response
+//
+// =========================================================
 
 async function logTransaction({
 
     transactionId,
 
-    contactKey,
+    contactKey = "",
 
-    mobileNumber,
+    mobileNumber = "",
 
-    message,
+    message = "",
 
-    status,
+    status = "",
 
     reason = "",
 
@@ -411,7 +426,67 @@ async function logTransaction({
 
 }) {
 
+    console.log(
+        "================================================"
+    );
+
+    console.log(
+        "SFMC TRANSACTION LOG START"
+    );
+
+    console.log(
+        "================================================"
+    );
+
+
     try {
+
+        // =====================================================
+        // CHECK CONFIGURATION
+        // =====================================================
+
+        const restBase =
+            process.env.SFMC_REST_BASE_URI;
+
+        const deKey =
+            process.env.SFMC_TRANSACTION_DE_KEY;
+
+
+        console.log(
+            "SFMC_REST_BASE_URI:",
+            restBase || "(MISSING)"
+        );
+
+        console.log(
+            "SFMC_TRANSACTION_DE_KEY:",
+            deKey || "(MISSING)"
+        );
+
+
+        if (!restBase) {
+
+            throw new Error(
+                "SFMC_REST_BASE_URI is not configured"
+            );
+        }
+
+
+        if (!deKey) {
+
+            throw new Error(
+                "SFMC_TRANSACTION_DE_KEY is not configured"
+            );
+        }
+
+
+        // =====================================================
+        // GET SFMC ACCESS TOKEN
+        // =====================================================
+
+        console.log(
+            "Getting SFMC access token..."
+        );
+
 
         const {
             getAccessToken
@@ -424,37 +499,54 @@ async function logTransaction({
             await getAccessToken();
 
 
-        const restBase =
-            process.env
-                .SFMC_REST_BASE_URI
-                .replace(
-                    /\/$/,
-                    ""
-                );
+        if (!token) {
 
-
-        const deKey =
-            process.env
-                .SFMC_TRANSACTION_DE_KEY;
-
-
-        if (!deKey) {
-
-            console.error(
-                "SFMC_TRANSACTION_DE_KEY is missing"
+            throw new Error(
+                "SFMC access token was empty"
             );
-
-            return;
         }
 
 
+        console.log(
+            "SFMC access token received successfully"
+        );
+
+
+        // =====================================================
+        // BUILD REST URL
+        // =====================================================
+
+        const cleanRestBase =
+            restBase.replace(
+                /\/+$/,
+                ""
+            );
+
+
         const url =
-            `${restBase}` +
+            `${cleanRestBase}` +
             `/hub/v1/dataevents/key/` +
             `${encodeURIComponent(
                 deKey
             )}` +
             `/rowset`;
+
+
+        console.log(
+            "Transaction Log URL:"
+        );
+
+        console.log(
+            url
+        );
+
+
+        // =====================================================
+        // CREATE PAYLOAD
+        // =====================================================
+
+        const createdDate =
+            new Date().toISOString();
 
 
         const payload = [
@@ -468,6 +560,7 @@ async function logTransaction({
 
                 },
 
+
                 values: {
 
                     TransactionId:
@@ -480,7 +573,9 @@ async function logTransaction({
                         mobileNumber || "",
 
                     Message:
-                        message || "",
+                        String(
+                            message || ""
+                        ),
 
                     Status:
                         status || "",
@@ -495,14 +590,15 @@ async function logTransaction({
                         errorCode || "",
 
                     ErrorMessage:
-                        errorMessage || "",
+                        String(
+                            errorMessage || ""
+                        ),
 
                     ConsentStatus:
                         consentStatus || "",
 
                     CreatedDate:
-                        new Date()
-                            .toISOString()
+                        createdDate
 
                 }
 
@@ -512,7 +608,32 @@ async function logTransaction({
 
 
         console.log(
-            "Writing transaction to SFMC..."
+            "================================================"
+        );
+
+        console.log(
+            "SFMC TRANSACTION PAYLOAD"
+        );
+
+        console.log(
+            JSON.stringify(
+                payload,
+                null,
+                2
+            )
+        );
+
+        console.log(
+            "================================================"
+        );
+
+
+        // =====================================================
+        // SEND TO SFMC
+        // =====================================================
+
+        console.log(
+            "Sending transaction to SFMC..."
         );
 
 
@@ -550,32 +671,135 @@ async function logTransaction({
             await response.text();
 
 
+        console.log(
+            "================================================"
+        );
+
+        console.log(
+            "SFMC TRANSACTION RESPONSE"
+        );
+
+        console.log(
+            "HTTP STATUS:",
+            response.status
+        );
+
+        console.log(
+            "HTTP OK:",
+            response.ok
+        );
+
+        console.log(
+            "RESPONSE:",
+            responseText
+        );
+
+        console.log(
+            "================================================"
+        );
+
+
+        // =====================================================
+        // HANDLE SFMC ERROR
+        // =====================================================
+
         if (!response.ok) {
 
-            console.error(
-                "Transaction log failed:",
-                response.status,
-                responseText
-            );
+            throw new Error(
 
-            return;
+                `SFMC Transaction Log API failed. ` +
+                `HTTP ${response.status}. ` +
+                `Response: ${responseText}`
+
+            );
         }
 
 
+        // =====================================================
+        // SUCCESS
+        // =====================================================
+
         console.log(
-            "Transaction successfully logged:",
+            "SFMC TRANSACTION LOG SUCCESS"
+        );
+
+        console.log(
+            "TransactionId:",
             transactionId
         );
 
+        console.log(
+            "================================================"
+        );
+
+
+        return {
+
+            success:
+                true,
+
+            transactionId:
+
+                transactionId,
+
+            statusCode:
+                response.status,
+
+            response:
+                responseText
+
+        };
 
     }
 
     catch (error) {
 
         console.error(
-            "Transaction logging error:",
+            "================================================"
+        );
+
+        console.error(
+            "SFMC TRANSACTION LOG FAILED"
+        );
+
+        console.error(
+            "TransactionId:",
+            transactionId
+        );
+
+        console.error(
+            "Error:",
             error.message
         );
+
+        console.error(
+            "================================================"
+        );
+
+
+        // IMPORTANT:
+        //
+        // Do NOT throw the error to Journey Builder.
+        //
+        // SMS can already be successfully delivered.
+        //
+        // Therefore logging failure should not change
+        // the SMS delivery result.
+        //
+
+        return {
+
+            success:
+                false,
+
+            transactionId:
+
+                transactionId,
+
+            error:
+                error.message
+
+        };
     }
 }
 
@@ -652,26 +876,6 @@ function verifyJourneyJWT(
 // =========================================================
 // JOURNEY BUILDER EXECUTE
 // =========================================================
-//
-// FLOW:
-//
-// Journey Builder
-//      ↓
-// JWT
-//      ↓
-// InArguments
-//      ↓
-// ContactKey
-//      ↓
-// MobileNumber
-//      ↓
-// Consent BY MOBILE NUMBER
-//      ↓
-// SMSOptIn
-//      ↓
-// Twilio
-//
-// =========================================================
 
 app.post(
 
@@ -736,10 +940,6 @@ app.post(
             );
 
 
-            // =================================================
-            // DEBUG DECODED JWT
-            // =================================================
-
             console.log(
                 "Decoded JWT keys:",
                 Object.keys(
@@ -799,8 +999,11 @@ app.post(
 
             contactKey =
                 inArgs.contactKey ||
+
                 inArgs.ContactKey ||
+
                 inArgs.contactkey ||
+
                 "";
 
 
@@ -1032,7 +1235,7 @@ app.post(
 
 
             // =================================================
-            // MOBILE NUMBER FOR SFMC CONSENT
+            // CLEAN MOBILE FOR SFMC
             // =================================================
 
             const sfmcMobileNumber =
@@ -1065,16 +1268,7 @@ app.post(
 
 
             // =================================================
-            // CONSENT LOOKUP BY MOBILE NUMBER
-            // =================================================
-            //
-            // IMPORTANT:
-            //
-            // We DO NOT use ContactKey here.
-            //
-            // MobileNumber is the primary operational
-            // identifier for Twilio consent.
-            //
+            // CONSENT LOOKUP BY MOBILE
             // =================================================
 
             const consent =
@@ -1106,11 +1300,6 @@ app.post(
 
                 console.error(
                     "NO CONSENT RECORD FOUND"
-                );
-
-                console.error(
-                    "MobileNumber:",
-                    sfmcMobileNumber
                 );
 
 
@@ -1245,7 +1434,7 @@ app.post(
 
 
             // =================================================
-            // CONSENT TRUE
+            // CONSENT APPROVED
             // =================================================
 
             console.log(
@@ -1270,7 +1459,7 @@ app.post(
 
 
             // =================================================
-            // SEND SMS THROUGH TWILIO
+            // SEND SMS
             // =================================================
 
             console.log(
@@ -1309,7 +1498,7 @@ app.post(
             console.log(
                 "Twilio Message SID:",
                 twilioMessage?.sid ||
-                "(NO SID RETURNED)"
+                "(NO SID)"
             );
 
 
@@ -1332,33 +1521,83 @@ app.post(
 
 
             // =================================================
-            // LOG SUCCESS
+            // SMS SUCCESS
             // =================================================
 
-            await logTransaction({
+            console.log(
+                "================================================"
+            );
 
-                transactionId,
+            console.log(
+                "TWILIO SMS ACCEPTED"
+            );
 
-                contactKey,
+            console.log(
+                "Message SID:",
+                twilioMessage.sid
+            );
 
-                mobileNumber:
-                    phone,
+            console.log(
+                "================================================"
+            );
 
-                message,
 
-                status:
-                    "SENT",
+            // =================================================
+            // LOG SUCCESS TO SFMC
+            // =================================================
 
-                reason:
-                    "",
+            const logResult =
+                await logTransaction({
 
-                twilioMessageSid:
-                    twilioMessage.sid,
+                    transactionId,
 
-                consentStatus:
-                    "OPTED_IN"
+                    contactKey,
 
-            });
+                    mobileNumber:
+                        phone,
+
+                    message,
+
+                    status:
+                        "SENT",
+
+                    reason:
+                        "",
+
+                    twilioMessageSid:
+                        twilioMessage.sid,
+
+                    consentStatus:
+                        "OPTED_IN"
+
+                });
+
+
+            // =================================================
+            // IMPORTANT:
+            // SMS SENT EVEN IF LOG FAILED
+            // =================================================
+
+            if (
+                !logResult ||
+                logResult.success !== true
+            ) {
+
+                console.error(
+                    "WARNING: SMS was sent but SFMC transaction logging failed."
+                );
+
+                console.error(
+                    "TransactionId:",
+                    transactionId
+                );
+
+                console.error(
+                    "Twilio SID:",
+                    twilioMessage.sid
+                );
+
+            }
 
 
             // =================================================
@@ -1384,6 +1623,13 @@ app.post(
             );
 
             console.log(
+                "SFMC Log:",
+                logResult?.success
+                    ? "SUCCESS"
+                    : "FAILED"
+            );
+
+            console.log(
                 "================================================"
             );
 
@@ -1398,7 +1644,12 @@ app.post(
                     transactionId,
 
                     twilioMessageSid:
-                        twilioMessage.sid
+                        twilioMessage.sid,
+
+                    transactionLog:
+                        logResult?.success
+                            ? "success"
+                            : "failed"
 
                 });
 
@@ -1435,37 +1686,51 @@ app.post(
             );
 
 
-            await logTransaction({
+            // =================================================
+            // LOG ERROR TO SFMC
+            // =================================================
 
-                transactionId,
+            const logResult =
+                await logTransaction({
 
-                contactKey,
+                    transactionId,
 
-                mobileNumber:
-                    phone,
+                    contactKey,
 
-                message,
+                    mobileNumber:
+                        phone,
 
-                status:
-                    "ERROR",
+                    message,
 
-                reason:
-                    "EXECUTE_ERROR",
+                    status:
+                        "ERROR",
 
-                errorCode:
-                    error.code ||
-                    "",
+                    reason:
+                        "EXECUTE_ERROR",
 
-                errorMessage:
-                    error.message ||
-                    ""
+                    errorCode:
+                        error.code ||
+                        "",
 
-            });
+                    errorMessage:
+                        error.message ||
+                        "",
+
+                    consentStatus:
+                        ""
+
+                });
 
 
-            // IMPORTANT:
-            // Return 200 so Journey Builder receives
-            // a valid response from the custom activity.
+            console.log(
+                "Error transaction log result:",
+                JSON.stringify(
+                    logResult,
+                    null,
+                    2
+                )
+            );
+
 
             return res
                 .status(200)
@@ -1490,12 +1755,6 @@ app.post(
 
 // =========================================================
 // DEBUG - CONSENT BY MOBILE
-// =========================================================
-//
-// Example:
-//
-// /debug/consent?mobileNumber=916377783635
-//
 // =========================================================
 
 app.get(
@@ -1581,7 +1840,6 @@ app.get(
 
                 });
 
-
         }
 
         catch (error) {
@@ -1604,6 +1862,156 @@ app.get(
 
                 });
         }
+    }
+);
+
+
+// =========================================================
+// DEBUG - TRANSACTION LOG
+// =========================================================
+//
+// This endpoint is VERY IMPORTANT for troubleshooting.
+//
+// Call:
+//
+// GET /debug/transaction-log
+//
+// It will try to write one test record into:
+//
+// SMS_Transaction_Log
+//
+// =========================================================
+
+app.get(
+    "/debug/transaction-log",
+
+    async (req, res) => {
+
+        const transactionId =
+            generateTransactionId();
+
+
+        console.log(
+            "================================================"
+        );
+
+        console.log(
+            "MANUAL TRANSACTION LOG TEST"
+        );
+
+        console.log(
+            "TransactionId:",
+            transactionId
+        );
+
+        console.log(
+            "================================================"
+        );
+
+
+        const result =
+            await logTransaction({
+
+                transactionId,
+
+                contactKey:
+                    "DEBUG_CONTACT",
+
+                mobileNumber:
+                    "916377783635",
+
+                message:
+                    "SFMC transaction log test",
+
+                status:
+                    "TEST",
+
+                reason:
+                    "DEBUG_ENDPOINT",
+
+                twilioMessageSid:
+                    "DEBUG_SID",
+
+                errorCode:
+                    "",
+
+                errorMessage:
+                    "",
+
+                consentStatus:
+                    "TEST"
+
+            });
+
+
+        return res
+            .status(
+                result.success
+                    ? 200
+                    : 500
+            )
+            .json({
+
+                transactionId,
+
+                result
+
+            });
+    }
+);
+
+
+// =========================================================
+// DEBUG PHONE
+// =========================================================
+
+app.get(
+    "/debug/phone",
+
+    (req, res) => {
+
+        const input =
+            req.query.phone;
+
+
+        if (!input) {
+
+            return res
+                .status(400)
+                .json({
+
+                    error:
+                        "phone query parameter is required"
+
+                });
+        }
+
+
+        const normalized =
+            normalizePhone(
+                input
+            );
+
+
+        const sfmcNumber =
+            cleanMobileForSFMC(
+                normalized
+            );
+
+
+        return res
+            .status(200)
+            .json({
+
+                input,
+
+                twilioFormat:
+                    normalized,
+
+                sfmcFormat:
+                    sfmcNumber
+
+            });
     }
 );
 
@@ -1714,7 +2122,7 @@ app.post(
 
 
             // =================================================
-            // GET MOBILE
+            // MOBILE
             // =================================================
 
             const from =
@@ -1816,7 +2224,7 @@ app.post(
 
 
             // =================================================
-            // FIND CONSENT BY MOBILE
+            // FIND CONSENT
             // =================================================
 
             const contact =
@@ -1901,11 +2309,9 @@ app.post(
             const result =
                 await optOut({
 
-                    contactKey:
-                        contactKey,
+                    contactKey,
 
-                    mobileNumber:
-                        mobileNumber,
+                    mobileNumber,
 
                     source:
                         "Twilio",
@@ -1941,11 +2347,9 @@ app.post(
                     messageSid ||
                     generateTransactionId(),
 
-                contactKey:
-                    contactKey,
+                contactKey,
 
-                mobileNumber:
-                    mobileNumber,
+                mobileNumber,
 
                 message:
                     body,
@@ -1965,27 +2369,9 @@ app.post(
             });
 
 
-            console.log(
-                "================================================"
-            );
-
-            console.log(
-                "TWILIO OPT-OUT COMPLETED"
-            );
-
-            console.log(
-                "MobileNumber:",
-                mobileNumber
-            );
-
-            console.log(
-                "SMSOptIn: FALSE"
-            );
-
-            console.log(
-                "================================================"
-            );
-
+            // =================================================
+            // TWILIO RESPONSE
+            // =================================================
 
             res.type(
                 "text/xml"
@@ -2036,13 +2422,6 @@ app.post(
 
 // =========================================================
 // OPT-IN API
-// =========================================================
-//
-// POST /consent/optin
-//
-// MobileNumber is required.
-// ContactKey is optional.
-//
 // =========================================================
 
 app.post(
@@ -2165,11 +2544,9 @@ app.post(
                     mobileNumber:
                         sfmcMobileNumber,
 
-                    result:
-                        result
+                    result
 
                 });
-
 
         }
 
@@ -2196,65 +2573,6 @@ app.post(
 
                 });
         }
-    }
-);
-
-
-// =========================================================
-// DEBUG PHONE
-// =========================================================
-
-app.get(
-    "/debug/phone",
-
-    (req, res) => {
-
-        const input =
-            req.query.phone;
-
-
-        if (!input) {
-
-            return res
-                .status(400)
-                .json({
-
-                    error:
-                        "phone query parameter is required"
-
-                });
-        }
-
-
-        const normalized =
-            normalizePhone(
-                input
-            );
-
-
-        const sfmcNumber =
-            cleanMobileForSFMC(
-                normalized
-            );
-
-
-        return res
-            .status(200)
-            .json({
-
-                input:
-
-                    input,
-
-                twilioFormat:
-
-                    normalized,
-
-                sfmcFormat:
-
-                    sfmcNumber
-
-            });
     }
 );
 
@@ -2357,6 +2675,10 @@ app.listen(
 
         console.log(
             `Twilio Webhook: ${PUBLIC_BASE_URL}/twilio/inbound`
+        );
+
+        console.log(
+            `Transaction Log Test: ${PUBLIC_BASE_URL}/debug/transaction-log`
         );
 
         console.log(
