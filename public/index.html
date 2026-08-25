@@ -1,1762 +1,988 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
+
 <meta charset="UTF-8">
+
 <title>Twilio SMS Configuration</title>
 
 <style>
 
 :root {
-  --ink: #1A2B3C;
-  --slate: #5B6B7A;
-  --slate-light: #9AA8B4;
-  --hairline: #E1E7EC;
-  --panel-bg: #FAFBFC;
-  --ccf-navy: #003057;
-  --ccf-navy-deep: #001C33;
-  --ccf-blue: #0072CE;
-  --ccf-orange: #F58220;
-  --white: #FFFFFF;
+    --ink: #1A2B3C;
+    --slate: #5B6B7A;
+    --slate-light: #9AA8B4;
+    --hairline: #E1E7EC;
+    --panel-bg: #FAFBFC;
+    --ccf-navy: #003057;
+    --ccf-navy-deep: #001C33;
+    --ccf-blue: #0072CE;
+    --ccf-orange: #F58220;
+    --white: #FFFFFF;
 }
 
 * {
-  box-sizing: border-box;
+    box-sizing: border-box;
 }
 
 html,
 body {
-  margin: 0;
-  height: 100%;
-  width: 100%;
-  font-family:
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    Inter,
-    Roboto,
-    sans-serif;
-
-  color: var(--ink);
-  background: var(--panel-bg);
-  font-size: 13px;
+    margin: 0;
+    height: 100%;
+    width: 100%;
+    font-family:
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        Inter,
+        Roboto,
+        sans-serif;
+    color: var(--ink);
+    background: var(--panel-bg);
+    font-size: 13px;
 }
 
 .app {
-  display: flex;
-  flex-direction: column;
-  min-height: 100%;
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
 }
-
-
-/* =========================================================
-   HEADER
-========================================================= */
 
 .site-header {
 
-  display: flex;
-  align-items: center;
-  gap: 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
 
-  padding: 10px 16px;
+    padding: 10px 16px;
 
-  background: var(--white);
+    background: var(--white);
 
-  border-bottom:
-    1px solid var(--hairline);
+    border-bottom:
+        1px solid var(--hairline);
 
-  position: relative;
+    position: relative;
 
-  flex-shrink: 0;
+    flex-shrink: 0;
 }
 
 .header-accent {
 
-  position: absolute;
+    position: absolute;
 
-  top: 0;
-  left: 0;
-  right: 0;
+    top: 0;
+    left: 0;
+    right: 0;
 
-  height: 3px;
+    height: 3px;
 
-  background:
-    linear-gradient(
-      90deg,
-      var(--ccf-orange) 0%,
-      #FFB25A 100%
-    );
+    background:
+        linear-gradient(
+            90deg,
+            var(--ccf-orange) 0%,
+            #FFB25A 100%
+        );
 }
 
 .site-header img {
 
-  height: 22px;
-  width: auto;
+    height: 22px;
 
-  display: block;
+    width: auto;
+
+    display: block;
 }
 
 .header-divider {
 
-  width: 1px;
-  height: 16px;
+    width: 1px;
+    height: 16px;
 
-  background:
-    var(--hairline);
+    background:
+        var(--hairline);
 }
 
 .header-title {
 
-  font-size: 11.5px;
-  font-weight: 600;
+    font-size: 11.5px;
 
-  color:
-    var(--ccf-navy);
+    font-weight: 600;
+
+    color:
+        var(--ccf-navy);
 }
-
-
-/* =========================================================
-   BODY
-========================================================= */
 
 .body-scroll {
 
-  flex: 1;
+    flex: 1;
 
-  overflow-y: auto;
+    overflow-y: auto;
 
-  padding:
-    16px 18px 24px;
+    padding:
+        16px 18px 24px;
 }
 
 .eyebrow {
 
-  font-size: 10px;
+    font-size: 10px;
 
-  letter-spacing:
-    0.07em;
+    letter-spacing: 0.07em;
 
-  text-transform:
-    uppercase;
+    text-transform: uppercase;
 
-  color:
-    var(--ccf-orange);
+    color:
+        var(--ccf-orange);
 
-  font-weight: 700;
+    font-weight: 700;
 
-  margin:
-    0 0 4px;
+    margin:
+        0 0 4px;
 }
 
 h1 {
 
-  font-size: 17px;
+    font-size: 17px;
 
-  font-weight: 700;
+    font-weight: 700;
 
-  margin:
-    0 0 4px;
+    margin:
+        0 0 4px;
+
+    letter-spacing: -0.01em;
 }
 
 .subtitle {
 
-  font-size: 11.5px;
+    font-size: 11.5px;
 
-  color:
-    var(--slate);
+    color:
+        var(--slate);
 
-  margin:
-    0 0 16px;
+    margin:
+        0 0 16px;
 
-  line-height:
-    1.4;
+    line-height: 1.4;
 }
-
-
-/* =========================================================
-   SECTION HEADER
-========================================================= */
 
 .block-header {
 
-  display: flex;
+    display: flex;
 
-  align-items: center;
+    align-items: center;
 
-  gap: 8px;
+    gap: 8px;
 
-  padding-bottom:
-    8px;
+    padding-bottom: 8px;
 
-  margin-bottom:
-    12px;
+    margin-bottom: 12px;
 
-  border-bottom:
-    1px solid var(--hairline);
+    border-bottom:
+        1px solid var(--hairline);
 }
 
 .block-icon {
 
-  width: 22px;
-  height: 22px;
+    width: 22px;
+    height: 22px;
 
-  border-radius: 6px;
+    border-radius: 6px;
 
-  background:
-    linear-gradient(
-      135deg,
-      var(--ccf-navy),
-      var(--ccf-blue)
-    );
+    background:
+        linear-gradient(
+            135deg,
+            var(--ccf-navy),
+            var(--ccf-blue)
+        );
 
-  display: flex;
+    display: flex;
 
-  align-items: center;
-  justify-content: center;
+    align-items: center;
 
-  flex-shrink: 0;
+    justify-content: center;
+
+    flex-shrink: 0;
 }
 
 .block-icon svg {
 
-  width: 12px;
-  height: 12px;
+    width: 12px;
+    height: 12px;
 
-  stroke: white;
+    stroke: white;
 }
 
 .block-header h2 {
 
-  font-size: 12.5px;
+    font-size: 12.5px;
 
-  font-weight: 700;
+    font-weight: 700;
 
-  margin: 0;
-}
-
-
-/* =========================================================
-   FIELDS
-========================================================= */
-
-label.field-label {
-
-  display: block;
-
-  font-size: 11.5px;
-
-  font-weight: 600;
-
-  margin-bottom: 6px;
-
-  color:
-    var(--ink);
+    margin: 0;
 }
 
 .field-group {
 
-  margin-bottom:
-    16px;
+    margin-bottom: 16px;
 }
 
+label.field-label {
 
-/* =========================================================
-   MESSAGE
-========================================================= */
+    display: block;
+
+    font-size: 11.5px;
+
+    font-weight: 600;
+
+    margin-bottom: 6px;
+
+    color:
+        var(--ink);
+}
 
 textarea {
 
-  width: 100%;
+    width: 100%;
 
-  font-family: inherit;
+    font-family: inherit;
 
-  font-size: 12.5px;
+    font-size: 12.5px;
 
-  padding:
-    9px 11px;
+    padding:
+        9px 11px;
 
-  border:
-    1.5px solid var(--hairline);
+    border:
+        1.5px solid var(--hairline);
 
-  border-radius: 8px;
+    border-radius: 8px;
 
-  background:
-    var(--white);
+    background:
+        var(--white);
 
-  color:
-    var(--ink);
+    color:
+        var(--ink);
 
-  resize: none;
+    resize: none;
 
-  height: 80px;
+    height: 90px;
 
-  line-height:
-    1.45;
+    line-height: 1.45;
 
-  transition:
-    border-color 0.15s ease,
-    box-shadow 0.15s ease;
+    transition:
+        border-color 0.15s ease,
+        box-shadow 0.15s ease;
 }
 
 textarea:focus {
 
-  outline: none;
+    outline: none;
 
-  border-color:
-    var(--ccf-blue);
+    border-color:
+        var(--ccf-blue);
 
-  box-shadow:
-    0 0 0 3px
-    rgba(0, 114, 206, 0.14);
+    box-shadow:
+        0 0 0 3px
+        rgba(0,114,206,0.14);
 }
 
 textarea::placeholder {
 
-  color:
-    var(--slate-light);
+    color:
+        var(--slate-light);
 }
 
 .field-footer {
 
-  display: flex;
+    display: flex;
 
-  justify-content:
-    space-between;
+    justify-content:
+        space-between;
 
-  margin-top: 5px;
+    margin-top: 5px;
 }
 
 .field-hint {
 
-  font-size: 10.5px;
+    font-size: 10.5px;
 
-  color:
-    var(--slate);
+    color:
+        var(--slate);
 }
 
 .char-count {
 
-  font-size: 10.5px;
+    font-size: 10.5px;
 
-  font-variant-numeric:
-    tabular-nums;
+    font-variant-numeric:
+        tabular-nums;
 
-  color:
-    var(--slate);
+    color:
+        var(--slate);
 
-  font-weight: 600;
+    font-weight: 600;
 }
 
 .char-count.warn {
 
-  color:
-    var(--ccf-orange);
+    color:
+        var(--ccf-orange);
 }
 
 .segment-note {
 
-  font-size: 10.5px;
+    font-size: 10.5px;
 
-  color:
-    var(--slate-light);
+    color:
+        var(--slate-light);
 
-  margin-top: 4px;
+    margin-top: 4px;
 }
 
 
-/* =========================================================
-   PERSONALIZATION
-========================================================= */
+/* VARIABLE SECTION */
 
-.personalization-section {
+.variable-section {
 
-  margin-top: 18px;
+    margin-top: 18px;
 
-  padding:
-    14px;
+    border:
+        1px solid var(--hairline);
 
-  border:
-    1px solid var(--hairline);
+    border-radius: 10px;
 
-  border-radius: 10px;
+    background:
+        var(--white);
 
-  background:
-    #FFFFFF;
+    padding: 12px;
 }
 
-.personalization-header {
+.variable-header {
 
-  display: flex;
+    display: flex;
 
-  align-items: center;
+    justify-content:
+        space-between;
 
-  justify-content:
-    space-between;
+    align-items: center;
 
-  margin-bottom:
-    10px;
+    margin-bottom: 10px;
 }
 
-.personalization-title {
+.variable-title {
 
-  font-size: 12px;
+    font-size: 11.5px;
 
-  font-weight: 700;
+    font-weight: 700;
 
-  color:
-    var(--ccf-navy);
+    color:
+        var(--ink);
 }
 
-.personalization-description {
+.variable-description {
 
-  font-size: 10.5px;
+    font-size: 10px;
 
-  color:
-    var(--slate);
+    color:
+        var(--slate);
 
-  margin:
-    0 0 12px;
-
-  line-height:
-    1.4;
+    margin-top: 2px;
 }
-
-
-/* =========================================================
-   ADD VARIABLE BUTTON
-========================================================= */
 
 .add-variable-btn {
 
-  border: none;
+    border: none;
 
-  background:
-    var(--ccf-blue);
+    border-radius: 7px;
 
-  color:
-    white;
+    padding:
+        7px 11px;
 
-  border-radius: 6px;
+    background:
+        var(--ccf-blue);
 
-  padding:
-    7px 10px;
+    color:
+        white;
 
-  font-size: 10.5px;
+    font-size: 10.5px;
 
-  font-weight: 600;
+    font-weight: 700;
 
-  cursor: pointer;
+    cursor: pointer;
 }
 
 .add-variable-btn:hover {
 
-  opacity:
-    0.9;
+    opacity: 0.9;
 }
-
-
-/* =========================================================
-   VARIABLE ROW
-========================================================= */
 
 .variable-row {
 
-  display: grid;
+    display: grid;
 
-  grid-template-columns:
-    1fr 1fr auto;
+    grid-template-columns:
+        1fr 1fr auto;
 
-  gap: 8px;
+    gap: 8px;
 
-  align-items:
-    end;
+    align-items: end;
 
-  padding:
-    10px;
+    padding:
+        9px 0;
 
-  margin-bottom:
-    8px;
+    border-top:
+        1px solid var(--hairline);
+}
 
-  border:
-    1px solid var(--hairline);
+.variable-label {
 
-  border-radius: 8px;
+    font-size: 9.5px;
 
-  background:
-    #FAFBFC;
+    color:
+        var(--slate);
+
+    margin-bottom: 4px;
+}
+
+.variable-name {
+
+    width: 100%;
+
+    padding:
+        7px 8px;
+
+    border:
+        1px solid var(--hairline);
+
+    border-radius: 6px;
+
+    font-size: 11px;
+
+    background:
+        #F8FAFC;
 }
 
 .variable-field {
 
-  display: flex;
+    width: 100%;
 
-  flex-direction:
-    column;
+    padding:
+        7px 8px;
+
+    border:
+        1px solid var(--hairline);
+
+    border-radius: 6px;
+
+    font-size: 11px;
+
+    background:
+        white;
 }
-
-.variable-field label {
-
-  font-size: 10px;
-
-  font-weight: 600;
-
-  color:
-    var(--slate);
-
-  margin-bottom:
-    4px;
-}
-
-.variable-input,
-.variable-select {
-
-  width: 100%;
-
-  height: 34px;
-
-  border:
-    1px solid var(--hairline);
-
-  border-radius: 6px;
-
-  padding:
-    0 8px;
-
-  background:
-    white;
-
-  font-size: 11.5px;
-
-  color:
-    var(--ink);
-}
-
-.variable-input:focus,
-.variable-select:focus {
-
-  outline: none;
-
-  border-color:
-    var(--ccf-blue);
-
-  box-shadow:
-    0 0 0 2px
-    rgba(0, 114, 206, 0.10);
-}
-
-
-/* =========================================================
-   VARIABLE TOKEN
-========================================================= */
-
-.variable-token {
-
-  margin-top:
-    8px;
-
-  padding:
-    6px 8px;
-
-  border-radius:
-    5px;
-
-  background:
-    #EEF6FC;
-
-  color:
-    var(--ccf-blue);
-
-  font-family:
-    monospace;
-
-  font-size:
-    10.5px;
-}
-
-
-/* =========================================================
-   REMOVE BUTTON
-========================================================= */
 
 .remove-variable {
 
-  width: 34px;
-  height: 34px;
+    height: 30px;
 
-  border:
-    1px solid #E5C8C8;
+    width: 30px;
 
-  background:
-    #FFF7F7;
+    border:
+        1px solid #E5E7EB;
 
-  color:
-    #C0392B;
+    background:
+        white;
 
-  border-radius:
-    6px;
+    color:
+        #B42318;
 
-  cursor:
-    pointer;
+    border-radius: 6px;
 
-  font-size:
-    15px;
+    cursor: pointer;
+
+    font-weight: 700;
 }
 
-.remove-variable:hover {
+.schema-status {
 
-  background:
-    #FDECEC;
+    font-size: 10px;
+
+    padding:
+        7px 8px;
+
+    margin-bottom: 8px;
+
+    border-radius: 6px;
+
+    background:
+        #F3F6F9;
+
+    color:
+        var(--slate);
+}
+
+.schema-status.success {
+
+    background:
+        #ECFDF3;
+
+    color:
+        #027A48;
+}
+
+.schema-status.error {
+
+    background:
+        #FEF3F2;
+
+    color:
+        #B42318;
 }
 
 
-/* =========================================================
-   EMPTY VARIABLE MESSAGE
-========================================================= */
-
-.no-variables {
-
-  text-align:
-    center;
-
-  padding:
-    12px;
-
-  color:
-    var(--slate-light);
-
-  font-size:
-    10.5px;
-
-  border:
-    1px dashed var(--hairline);
-
-  border-radius:
-    7px;
-}
-
-
-/* =========================================================
-   PREVIEW
-========================================================= */
+/* PREVIEW */
 
 .preview-card {
 
-  margin-top:
-    16px;
+    margin-top: 16px;
 
-  border-radius:
-    12px;
+    border-radius: 12px;
 
-  overflow:
-    hidden;
+    overflow: hidden;
 
-  background:
-    linear-gradient(
-      160deg,
-      var(--ccf-navy-deep) 0%,
-      var(--ccf-navy) 100%
-    );
+    background:
+        linear-gradient(
+            160deg,
+            var(--ccf-navy-deep) 0%,
+            var(--ccf-navy) 100%
+        );
 
-  box-shadow:
-    0 4px 16px
-    rgba(0,30,60,0.18);
+    box-shadow:
+        0 4px 16px
+        rgba(0,30,60,0.18);
 }
 
 .preview-label-row {
 
-  display: flex;
+    display: flex;
 
-  align-items: center;
+    align-items: center;
 
-  justify-content:
-    space-between;
+    justify-content:
+        space-between;
 
-  padding:
-    8px 12px 0;
+    padding:
+        8px 12px 0;
 }
 
 .preview-label {
 
-  font-size:
-    10px;
+    font-size: 10px;
 
-  letter-spacing:
-    0.05em;
+    letter-spacing: 0.05em;
 
-  text-transform:
-    uppercase;
+    text-transform: uppercase;
 
-  color:
-    rgba(255,255,255,0.55);
+    color:
+        rgba(255,255,255,0.55);
 
-  font-weight:
-    700;
+    font-weight: 700;
 }
 
 .live-pill {
 
-  display: flex;
+    display: flex;
 
-  align-items: center;
+    align-items: center;
 
-  gap: 5px;
+    gap: 5px;
 
-  background:
-    rgba(255,255,255,0.12);
+    background:
+        rgba(255,255,255,0.12);
 
-  color:
-    white;
+    color: white;
 
-  font-size:
-    9.5px;
+    font-size: 9.5px;
 
-  font-weight:
-    600;
+    font-weight: 600;
 
-  padding:
-    3px 8px;
+    padding:
+        3px 8px;
 
-  border-radius:
-    100px;
+    border-radius: 100px;
 
-  border:
-    1px solid
-    rgba(255,255,255,0.15);
+    border:
+        1px solid
+        rgba(255,255,255,0.15);
 }
 
 .live-dot {
 
-  width: 5px;
-  height: 5px;
+    width: 5px;
+    height: 5px;
 
-  border-radius:
-    50%;
+    border-radius: 50%;
 
-  background:
-    #4ADE80;
+    background:
+        #4ADE80;
 }
 
 .preview-thread {
 
-  padding:
-    10px 12px 14px;
+    padding:
+        10px 12px 14px;
 }
 
 .contact-header {
 
-  display: flex;
+    display: flex;
 
-  align-items: center;
+    align-items: center;
 
-  gap: 8px;
+    gap: 8px;
 
-  padding-bottom:
-    10px;
+    padding-bottom: 10px;
 
-  margin-bottom:
-    10px;
+    margin-bottom: 10px;
 
-  border-bottom:
-    1px solid
-    rgba(255,255,255,0.1);
+    border-bottom:
+        1px solid
+        rgba(255,255,255,0.1);
 }
 
 .contact-avatar {
 
-  width: 26px;
-  height: 26px;
+    width: 26px;
+    height: 26px;
 
-  border-radius:
-    50%;
+    border-radius: 50%;
 
-  background:
-    var(--white);
+    background:
+        var(--white);
 
-  padding: 3px;
+    padding: 3px;
 
-  display: flex;
+    display: flex;
 
-  align-items: center;
+    align-items: center;
 
-  justify-content: center;
+    justify-content: center;
+
+    flex-shrink: 0;
 }
 
 .contact-avatar img {
 
-  width: 100%;
-  height: 100%;
+    width: 100%;
+    height: 100%;
 
-  object-fit:
-    contain;
+    object-fit: contain;
 }
 
 .contact-name {
 
-  color:
-    white;
+    color: white;
 
-  font-size:
-    11.5px;
+    font-size: 11.5px;
 
-  font-weight:
-    600;
+    font-weight: 600;
 }
 
 .contact-sub {
 
-  color:
-    rgba(255,255,255,0.45);
+    color:
+        rgba(255,255,255,0.45);
 
-  font-size:
-    9.5px;
+    font-size: 9.5px;
 
-  margin-top:
-    1px;
+    margin-top: 1px;
 }
 
 .sms-bubble {
 
-  max-width:
-    85%;
+    max-width: 85%;
 
-  background:
-    var(--white);
+    background:
+        var(--white);
 
-  color:
-    var(--ccf-navy-deep);
+    color:
+        var(--ccf-navy-deep);
 
-  font-size:
-    12px;
+    font-size: 12px;
 
-  line-height:
-    1.4;
+    line-height: 1.4;
 
-  padding:
-    8px 11px;
+    padding:
+        8px 11px;
 
-  border-radius:
-    3px 14px 14px 14px;
+    border-radius:
+        3px 14px 14px 14px;
 
-  border-left:
-    3px solid
-    var(--ccf-orange);
+    border-left:
+        3px solid
+        var(--ccf-orange);
 
-  word-wrap:
-    break-word;
+    word-wrap: break-word;
 
-  white-space:
-    pre-wrap;
+    white-space: pre-wrap;
+
+    box-shadow:
+        0 2px 8px
+        rgba(0,0,0,0.12);
 }
 
 .bubble-timestamp {
 
-  font-size:
-    9.5px;
+    font-size: 9.5px;
 
-  color:
-    rgba(255,255,255,0.5);
+    color:
+        rgba(255,255,255,0.5);
 
-  margin-top:
-    6px;
-}
-
-
-/* =========================================================
-   RESPONSIVE
-========================================================= */
-
-@media (max-width: 600px) {
-
-  .variable-row {
-
-    grid-template-columns:
-      1fr;
-
-  }
-
-  .remove-variable {
-
-    width: 100%;
-  }
-
+    margin-top: 6px;
 }
 
 </style>
+
 </head>
+
 
 <body>
 
 <div class="app">
 
-<!-- =====================================================
-     HEADER
-===================================================== -->
 
-<div class="site-header">
+    <!-- HEADER -->
 
-  <div class="header-accent"></div>
+    <div class="site-header">
 
-  <img
-    src="https://www.crohnscolitisfoundation.org/themes/custom/particle/dist/app-drupal/assets/ccf-logo.png?d9e1d0d25ca99f9e50620c56d6d9ba81="
-    alt="Crohn's & Colitis Foundation"
-  >
+        <div class="header-accent"></div>
 
-  <div class="header-divider"></div>
-
-  <span class="header-title">
-    SMS Message Center
-  </span>
-
-</div>
-
-
-<!-- =====================================================
-     BODY
-===================================================== -->
-
-<div class="body-scroll">
-
-  <p class="eyebrow">
-    SMS Configuration
-  </p>
-
-  <h1>
-    Send an SMS message
-  </h1>
-
-  <p class="subtitle">
-    Write your message and personalize it using fields from your Journey data.
-  </p>
-
-
-  <!-- =================================================
-       MESSAGE CONTENT
-  ================================================== -->
-
-  <div class="block-header">
-
-    <div class="block-icon">
-
-      <svg
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke-width="2"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-      >
-
-        <path
-          d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"
-        />
-
-      </svg>
-
-    </div>
-
-    <h2>
-      Message content
-    </h2>
-
-  </div>
-
-
-  <div class="field-group">
-
-    <label
-      class="field-label"
-      for="smsMessage"
-    >
-      Message
-    </label>
-
-    <textarea
-      id="smsMessage"
-      maxlength="480"
-      placeholder="Example: Hi {{FirstName}}, your order {{OrderNumber}} is ready."
-    ></textarea>
-
-    <div class="field-footer">
-
-      <span class="field-hint">
-        Use variables to personalize your SMS.
-      </span>
-
-      <span
-        class="char-count"
-        id="charCount"
-      >
-        0/480
-      </span>
-
-    </div>
-
-    <div
-      class="segment-note"
-      id="segmentNote"
-    >
-      1 segment · fits in a single SMS
-    </div>
-
-  </div>
-
-
-  <!-- =================================================
-       PERSONALIZATION VARIABLES
-  ================================================== -->
-
-  <div class="personalization-section">
-
-    <div class="personalization-header">
-
-      <div class="personalization-title">
-        Personalization variables
-      </div>
-
-      <button
-        type="button"
-        class="add-variable-btn"
-        id="addVariableBtn"
-      >
-        + Add Variable
-      </button>
-
-    </div>
-
-
-    <p class="personalization-description">
-
-      Define variables that can be inserted into your SMS.
-      Each variable will later be mapped to a field from your Journey Data Extension.
-
-    </p>
-
-
-    <div id="variablesContainer">
-
-      <div
-        class="no-variables"
-        id="noVariables"
-      >
-        No personalization variables added.
-        Click <strong>+ Add Variable</strong> to create one.
-      </div>
-
-    </div>
-
-  </div>
-
-
-  <!-- =================================================
-       PREVIEW
-  ================================================== -->
-
-  <div class="preview-card">
-
-    <div class="preview-label-row">
-
-      <span class="preview-label">
-        Preview
-      </span>
-
-      <span class="live-pill">
-
-        <span class="live-dot"></span>
-
-        Live
-
-      </span>
-
-    </div>
-
-
-    <div class="preview-thread">
-
-      <div class="contact-header">
-
-        <div class="contact-avatar">
-
-          <img
+        <img
             src="https://www.crohnscolitisfoundation.org/themes/custom/particle/dist/app-drupal/assets/ccf-logo.png?d9e1d0d25ca99f9e50620c56d6d9ba81="
-            alt="Crohn's & Colitis Foundation logo"
-          >
+            alt="Crohn's & Colitis Foundation"
+        >
 
-        </div>
+        <div class="header-divider"></div>
 
-        <div>
-
-          <div class="contact-name">
-            Crohn's &amp; Colitis Foundation
-          </div>
-
-          <div class="contact-sub">
-            Text Message
-          </div>
-
-        </div>
-
-      </div>
-
-
-      <div
-        class="sms-bubble"
-        id="smsBubble"
-      >
-
-        <div id="smsBubbleText">
-          Type your text message here...
-        </div>
-
-      </div>
-
-
-      <div class="bubble-timestamp">
-        Delivered · now
-      </div>
+        <span class="header-title">
+            SMS Message Center
+        </span>
 
     </div>
 
-  </div>
+
+    <!-- BODY -->
+
+    <div class="body-scroll">
+
+        <p class="eyebrow">
+            SMS Configuration
+        </p>
+
+        <h1>
+            Send an SMS message
+        </h1>
+
+        <p class="subtitle">
+            Write your message and personalize it with fields from the Journey Entry Event.
+        </p>
+
+
+        <!-- MESSAGE -->
+
+        <div class="block-header">
+
+            <div class="block-icon">
+
+                <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                >
+
+                    <path
+                        d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"
+                    />
+
+                </svg>
+
+            </div>
+
+            <h2>
+                Message content
+            </h2>
+
+        </div>
+
+
+        <div class="field-group">
+
+            <label
+                class="field-label"
+                for="smsMessage"
+            >
+                Message
+            </label>
+
+            <textarea
+                id="smsMessage"
+                maxlength="480"
+                placeholder="Example: Hi {{FirstName}}, your order {{OrderNumber}} is ready."
+            ></textarea>
+
+            <div class="field-footer">
+
+                <span class="field-hint">
+                    Use {{VariableName}} inside your message.
+                </span>
+
+                <span
+                    class="char-count"
+                    id="charCount"
+                >
+                    0/480
+                </span>
+
+            </div>
+
+            <div
+                class="segment-note"
+                id="segmentNote"
+            >
+                1 segment · fits in a single SMS
+            </div>
+
+        </div>
+
+
+        <!-- VARIABLES -->
+
+        <div class="variable-section">
+
+            <div class="variable-header">
+
+                <div>
+
+                    <div class="variable-title">
+                        Personalization variables
+                    </div>
+
+                    <div class="variable-description">
+                        Select fields from your Journey Entry Event.
+                    </div>
+
+                </div>
+
+                <button
+                    type="button"
+                    id="addVariable"
+                    class="add-variable-btn"
+                >
+                    + Add Variable
+                </button>
+
+            </div>
+
+
+            <div
+                id="schemaStatus"
+                class="schema-status"
+            >
+                Loading Journey Entry fields...
+            </div>
+
+
+            <div id="variableRows"></div>
+
+        </div>
+
+
+        <!-- PREVIEW -->
+
+        <div class="preview-card">
+
+            <div class="preview-label-row">
+
+                <span class="preview-label">
+                    Preview
+                </span>
+
+                <span class="live-pill">
+
+                    <span class="live-dot"></span>
+
+                    Live
+
+                </span>
+
+            </div>
+
+
+            <div class="preview-thread">
+
+                <div class="contact-header">
+
+                    <div class="contact-avatar">
+
+                        <img
+                            src="https://www.crohnscolitisfoundation.org/themes/custom/particle/dist/app-drupal/assets/ccf-logo.png?d9e1d0d25ca99f9e50620c56d6d9ba81="
+                            alt="Crohn's & Colitis Foundation logo"
+                        >
+
+                    </div>
+
+                    <div>
+
+                        <div class="contact-name">
+                            Crohn's &amp; Colitis Foundation
+                        </div>
+
+                        <div class="contact-sub">
+                            Text Message
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <div class="sms-bubble">
+
+                    <div id="smsBubbleText">
+                        Type your text message here...
+                    </div>
+
+                </div>
+
+
+                <div class="bubble-timestamp">
+                    Preview
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
 
 </div>
 
-</div>
 
-
-<!-- =====================================================
-     LIBRARIES
-===================================================== -->
+<!-- JQuery -->
 
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+
+
+<!-- Postmonger -->
 
 <script src="https://cdn.jsdelivr.net/npm/postmonger@0.0.16/postmonger.min.js"></script>
 
 
-<script>
-
-(function () {
-
-  const textarea =
-    document.getElementById(
-      "smsMessage"
-    );
-
-  const charCount =
-    document.getElementById(
-      "charCount"
-    );
-
-  const segmentNote =
-    document.getElementById(
-      "segmentNote"
-    );
-
-  const variablesContainer =
-    document.getElementById(
-      "variablesContainer"
-    );
-
-  const noVariables =
-    document.getElementById(
-      "noVariables"
-    );
-
-  const addVariableBtn =
-    document.getElementById(
-      "addVariableBtn"
-    );
-
-
-  /*
-  |--------------------------------------------------------------------------
-  | VARIABLE COUNTER
-  |--------------------------------------------------------------------------
-  */
-
-  let variableCounter = 0;
-
-
-  /*
-  |--------------------------------------------------------------------------
-  | AVAILABLE DE FIELDS
-  |--------------------------------------------------------------------------
-  |
-  | IMPORTANT:
-  |
-  | These are temporary example fields.
-  |
-  | Later customActivity.js can populate this
-  | list dynamically from the Journey Event / API.
-  |
-  |--------------------------------------------------------------------------
-  */
-
-  const availableFields = [
-
-    "FirstName",
-
-    "LastName",
-
-    "Email",
-
-    "Phone",
-
-    "MobileNumber",
-
-    "ContactKey",
-
-    "OrderNumber",
-
-    "OrderDate",
-
-    "OrderAmount"
-
-  ];
-
-
-  /*
-  |--------------------------------------------------------------------------
-  | SEGMENT INFO
-  |--------------------------------------------------------------------------
-  */
-
-  function segmentInfo(len) {
-
-    if (len === 0) {
-
-      return {
-
-        count: 1,
-
-        label:
-          "1 segment · fits in a single SMS"
-
-      };
-
-    }
-
-
-    const segments =
-      Math.max(
-        1,
-        Math.ceil(
-          len / 160
-        )
-      );
-
-
-    if (segments === 1) {
-
-      return {
-
-        count: 1,
-
-        label:
-          `1 segment · fits in a single SMS (${160 - len} characters left)`
-
-      };
-
-    }
-
-
-    return {
-
-      count: segments,
-
-      label:
-        `${segments} segments · message will be split into ${segments} texts`
-
-    };
-
-  }
-
-
-  /*
-  |--------------------------------------------------------------------------
-  | RENDER MESSAGE
-  |--------------------------------------------------------------------------
-  */
-
-  function render() {
-
-    const msg =
-      textarea.value;
-
-    const len =
-      msg.length;
-
-
-    charCount.textContent =
-      `${len}/480`;
-
-
-    charCount.classList.toggle(
-      "warn",
-      len > 400
-    );
-
-
-    const info =
-      segmentInfo(len);
-
-
-    segmentNote.textContent =
-      info.label;
-
-
-    segmentNote.style.color =
-      info.count > 1
-        ? "#F58220"
-        : "";
-
-
-    document
-      .getElementById(
-        "smsBubbleText"
-      )
-      .textContent =
-        msg ||
-        "Type your text message here...";
-
-  }
-
-
-  /*
-  |--------------------------------------------------------------------------
-  | CREATE VARIABLE ROW
-  |--------------------------------------------------------------------------
-  */
-
-  function createVariableRow() {
-
-    variableCounter++;
-
-
-    const row =
-      document.createElement(
-        "div"
-      );
-
-
-    row.className =
-      "variable-row";
-
-
-    row.dataset.variableId =
-      variableCounter;
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | VARIABLE NAME
-    |--------------------------------------------------------------------------
-    */
-
-    const variableField =
-      document.createElement(
-        "div"
-      );
-
-    variableField.className =
-      "variable-field";
-
-
-    const variableLabel =
-      document.createElement(
-        "label"
-      );
-
-    variableLabel.textContent =
-      "Variable name";
-
-
-    const variableInput =
-      document.createElement(
-        "input"
-      );
-
-    variableInput.type =
-      "text";
-
-    variableInput.className =
-      "variable-input";
-
-    variableInput.placeholder =
-      "Example: FirstName";
-
-    variableInput.dataset.role =
-      "variable-name";
-
-
-    variableField.appendChild(
-      variableLabel
-    );
-
-    variableField.appendChild(
-      variableInput
-    );
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | DE FIELD
-    |--------------------------------------------------------------------------
-    */
-
-    const fieldContainer =
-      document.createElement(
-        "div"
-      );
-
-    fieldContainer.className =
-      "variable-field";
-
-
-    const fieldLabel =
-      document.createElement(
-        "label"
-      );
-
-    fieldLabel.textContent =
-      "Data Extension field";
-
-
-    const fieldSelect =
-      document.createElement(
-        "select"
-      );
-
-    fieldSelect.className =
-      "variable-select";
-
-    fieldSelect.dataset.role =
-      "field-name";
-
-
-    const defaultOption =
-      document.createElement(
-        "option"
-      );
-
-    defaultOption.value =
-      "";
-
-    defaultOption.textContent =
-      "Select field";
-
-
-    fieldSelect.appendChild(
-      defaultOption
-    );
-
-
-    availableFields.forEach(
-      function (field) {
-
-        const option =
-          document.createElement(
-            "option"
-          );
-
-        option.value =
-          field;
-
-        option.textContent =
-          field;
-
-        fieldSelect.appendChild(
-          option
-        );
-
-      }
-    );
-
-
-    fieldContainer.appendChild(
-      fieldLabel
-    );
-
-    fieldContainer.appendChild(
-      fieldSelect
-    );
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | REMOVE BUTTON
-    |--------------------------------------------------------------------------
-    */
-
-    const removeButton =
-      document.createElement(
-        "button"
-      );
-
-    removeButton.type =
-      "button";
-
-    removeButton.className =
-      "remove-variable";
-
-    removeButton.innerHTML =
-      "×";
-
-    removeButton.title =
-      "Remove variable";
-
-
-    removeButton.addEventListener(
-      "click",
-      function () {
-
-        row.remove();
-
-        updateEmptyState();
-
-      }
-    );
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | ADD ROW
-    |--------------------------------------------------------------------------
-    */
-
-    row.appendChild(
-      variableField
-    );
-
-    row.appendChild(
-      fieldContainer
-    );
-
-    row.appendChild(
-      removeButton
-    );
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | TOKEN PREVIEW
-    |--------------------------------------------------------------------------
-    */
-
-    const tokenPreview =
-      document.createElement(
-        "div"
-      );
-
-    tokenPreview.className =
-      "variable-token";
-
-
-    tokenPreview.textContent =
-      "{{Variable}}";
-
-
-    row.appendChild(
-      tokenPreview
-    );
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | UPDATE TOKEN
-    |--------------------------------------------------------------------------
-    */
-
-    function updateToken() {
-
-      const variableName =
-        variableInput.value.trim();
-
-
-      if (variableName) {
-
-        tokenPreview.textContent =
-          `{{${variableName}}}`;
-
-      } else {
-
-        tokenPreview.textContent =
-          "{{Variable}}";
-
-      }
-
-    }
-
-
-    variableInput.addEventListener(
-      "input",
-      updateToken
-    );
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | INSERT VARIABLE INTO MESSAGE
-    |--------------------------------------------------------------------------
-    */
-
-    function insertVariable() {
-
-      const variableName =
-        variableInput.value.trim();
-
-
-      if (!variableName) {
-
-        return;
-
-      }
-
-
-      const token =
-        `{{${variableName}}}`;
-
-
-      const start =
-        textarea.selectionStart;
-
-
-      const end =
-        textarea.selectionEnd;
-
-
-      const currentValue =
-        textarea.value;
-
-
-      textarea.value =
-        currentValue.substring(
-          0,
-          start
-        ) +
-
-        token +
-
-        currentValue.substring(
-          end
-        );
-
-
-      textarea.focus();
-
-
-      const cursorPosition =
-        start + token.length;
-
-
-      textarea.setSelectionRange(
-        cursorPosition,
-        cursorPosition
-      );
-
-
-      render();
-
-    }
-
-
-    tokenPreview.style.cursor =
-      "pointer";
-
-
-    tokenPreview.title =
-      "Click to insert into message";
-
-
-    tokenPreview.addEventListener(
-      "click",
-      insertVariable
-    );
-
-
-    variablesContainer.appendChild(
-      row
-    );
-
-
-    updateEmptyState();
-
-  }
-
-
-  /*
-  |--------------------------------------------------------------------------
-  | EMPTY STATE
-  |--------------------------------------------------------------------------
-  */
-
-  function updateEmptyState() {
-
-    const rows =
-      variablesContainer.querySelectorAll(
-        ".variable-row"
-      );
-
-
-    if (rows.length === 0) {
-
-      noVariables.style.display =
-        "block";
-
-    } else {
-
-      noVariables.style.display =
-        "none";
-
-    }
-
-  }
-
-
-  /*
-  |--------------------------------------------------------------------------
-  | ADD VARIABLE
-  |--------------------------------------------------------------------------
-  */
-
-  addVariableBtn.addEventListener(
-    "click",
-    function () {
-
-      createVariableRow();
-
-    }
-  );
-
-
-  /*
-  |--------------------------------------------------------------------------
-  | MESSAGE INPUT
-  |--------------------------------------------------------------------------
-  */
-
-  textarea.addEventListener(
-    "input",
-    render
-  );
-
-
-  /*
-  |--------------------------------------------------------------------------
-  | INITIAL RENDER
-  |--------------------------------------------------------------------------
-  */
-
-  render();
-
-})();
-
-</script>
-
-
-<!-- =====================================================
-     CUSTOM ACTIVITY
-===================================================== -->
+<!-- Custom Activity -->
 
 <script src="customActivity.js"></script>
 
+
 </body>
+
 </html>
