@@ -524,12 +524,12 @@ async function logTransaction({
 
 
         const url =
-            `${cleanRestBase}` +
-            `/hub/v1/dataevents/key/` +
-            `${encodeURIComponent(
-                deKey
-            )}` +
-            `/rowset`;
+    `${cleanRestBase}` +
+    `/hub/v1/dataevents/key:` +
+    `${encodeURIComponent(
+        deKey
+    )}` +
+    `/rowset`;
 
 
         console.log(
