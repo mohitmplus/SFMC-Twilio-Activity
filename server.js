@@ -17,14 +17,18 @@ const {
 } = require("./services/twilioService");
 
 
+// =========================================================
+// EXPRESS APPLICATION
+// =========================================================
+
 const app = express();
 
-
-// ---------------------------------------------------------
-// BASIC CONFIGURATION
-// ---------------------------------------------------------
-
 app.set("trust proxy", true);
+
+
+// =========================================================
+// CONFIGURATION
+// =========================================================
 
 const PORT =
     process.env.PORT || 3000;
@@ -40,19 +44,23 @@ const WEBHOOK_API_KEY =
     process.env.WEBHOOK_API_KEY;
 
 
-// ---------------------------------------------------------
-// VALIDATE REQUIRED ENVIRONMENT VARIABLES
-// ---------------------------------------------------------
+// =========================================================
+// REQUIRED ENVIRONMENT VARIABLES
+// =========================================================
 
 const requiredEnvironmentVariables = [
     "TWILIO_ACCOUNT_SID",
     "TWILIO_AUTH_TOKEN",
     "TWILIO_PHONE_NUMBER",
+
     "JWT_SECRET",
+
     "SFMC_CLIENT_ID",
     "SFMC_CLIENT_SECRET",
+
     "SFMC_AUTH_BASE_URI",
     "SFMC_REST_BASE_URI",
+
     "SFMC_CONSENT_DE_KEY",
     "SFMC_TRANSACTION_DE_KEY"
 ];
@@ -64,15 +72,15 @@ for (
     if (!process.env[variable]) {
 
         console.warn(
-            `WARNING: Environment variable ${variable} is not configured`
+            `WARNING: ${variable} is not configured`
         );
     }
 }
 
 
-// ---------------------------------------------------------
+// =========================================================
 // STATIC FILES
-// ---------------------------------------------------------
+// =========================================================
 
 app.use(
     express.static(
@@ -81,9 +89,9 @@ app.use(
 );
 
 
-// ---------------------------------------------------------
-// NORMAL JSON REQUESTS
-// ---------------------------------------------------------
+// =========================================================
+// JSON REQUESTS
+// =========================================================
 
 app.use(
     express.json({
@@ -92,10 +100,10 @@ app.use(
 );
 
 
-// ---------------------------------------------------------
+// =========================================================
 // URL ENCODED REQUESTS
-// Required by Twilio inbound webhook
-// ---------------------------------------------------------
+// Required for Twilio Webhook
+// =========================================================
 
 app.use(
     express.urlencoded({
@@ -104,81 +112,139 @@ app.use(
 );
 
 
-// ---------------------------------------------------------
+// =========================================================
 // HEALTH CHECK
-// ---------------------------------------------------------
+// =========================================================
 
-app.get("/health", (req, res) => {
+app.get(
+    "/health",
+    (req, res) => {
 
-    res.status(200).json({
-        status: "ok",
-        service: "SFMC Twilio Custom Activity",
-        timestamp: new Date().toISOString()
-    });
-});
+        return res.status(200).json({
+
+            status: "ok",
+
+            service:
+                "SFMC Twilio Custom Activity",
+
+            timestamp:
+                new Date().toISOString()
+        });
+    }
+);
 
 
-// ---------------------------------------------------------
+// =========================================================
 // HOME
-// ---------------------------------------------------------
+// =========================================================
 
-app.get("/", (req, res) => {
+app.get(
+    "/",
+    (req, res) => {
 
-    res.sendFile(
-        path.join(
-            __dirname,
-            "public",
-            "index.html"
-        )
-    );
-});
-
-
-// ---------------------------------------------------------
-// JOURNEY BUILDER SAVE
-// ---------------------------------------------------------
-
-app.post("/save", (req, res) => {
-
-    console.log(
-        "Journey Builder save request received"
-    );
-
-    return res.status(200).json({});
-});
+        return res.sendFile(
+            path.join(
+                __dirname,
+                "public",
+                "index.html"
+            )
+        );
+    }
+);
 
 
-// ---------------------------------------------------------
-// JOURNEY BUILDER PUBLISH
-// ---------------------------------------------------------
+// =========================================================
+// JOURNEY BUILDER - SAVE
+// =========================================================
 
-app.post("/publish", (req, res) => {
+app.post(
+    "/save",
+    (req, res) => {
 
-    console.log(
-        "Journey Builder publish request received"
-    );
+        console.log(
+            "Journey Builder SAVE request received"
+        );
 
-    return res.status(200).json({});
-});
+        console.log(
+            JSON.stringify(
+                req.body,
+                null,
+                2
+            )
+        );
 
-
-// ---------------------------------------------------------
-// JOURNEY BUILDER VALIDATE
-// ---------------------------------------------------------
-
-app.post("/validate", (req, res) => {
-
-    console.log(
-        "Journey Builder validate request received"
-    );
-
-    return res.status(200).json({});
-});
+        return res.status(200).json({});
+    }
+);
 
 
-// ---------------------------------------------------------
+// =========================================================
+// JOURNEY BUILDER - PUBLISH
+// =========================================================
+
+app.post(
+    "/publish",
+    (req, res) => {
+
+        console.log(
+            "Journey Builder PUBLISH request received"
+        );
+
+        console.log(
+            JSON.stringify(
+                req.body,
+                null,
+                2
+            )
+        );
+
+        return res.status(200).json({});
+    }
+);
+
+
+// =========================================================
+// JOURNEY BUILDER - VALIDATE
+// =========================================================
+
+app.post(
+    "/validate",
+    (req, res) => {
+
+        console.log(
+            "Journey Builder VALIDATE request received"
+        );
+
+        console.log(
+            JSON.stringify(
+                req.body,
+                null,
+                2
+            )
+        );
+
+        return res.status(200).json({});
+    }
+);
+
+
+// =========================================================
 // NORMALIZE PHONE NUMBER
-// ---------------------------------------------------------
+// =========================================================
+//
+// Twilio requires:
+//
+// +916377783635
+//
+// Your SFMC DE stores:
+//
+// 916377783635
+//
+// Therefore:
+// - normalizePhone() is used for Twilio
+// - cleanMobileForSFMC() is used for SFMC
+//
+// =========================================================
 
 function normalizePhone(phone) {
 
@@ -202,7 +268,9 @@ function normalizePhone(phone) {
             ""
         );
 
-    if (!normalized.startsWith("+")) {
+    if (
+        !normalized.startsWith("+")
+    ) {
 
         normalized =
             "+" + normalized;
@@ -212,59 +280,127 @@ function normalizePhone(phone) {
 }
 
 
-// ---------------------------------------------------------
-// GENERATE TRANSACTION ID
-// ---------------------------------------------------------
+// =========================================================
+// CLEAN MOBILE NUMBER FOR SFMC
+// =========================================================
+//
+// Example:
+//
+// +91 63777 83635
+//       ↓
+// 916377783635
+//
+// =========================================================
 
-function generateTransactionId() {
+function cleanMobileForSFMC(phone) {
 
-    return crypto
-        .randomUUID();
+    if (
+        phone === undefined ||
+        phone === null
+    ) {
+        return null;
+    }
+
+    const cleanNumber =
+        String(phone)
+            .replace(/\D/g, "");
+
+    if (!cleanNumber) {
+        return null;
+    }
+
+    return cleanNumber;
 }
 
 
-// ---------------------------------------------------------
-// SFMC TRANSACTION LOG
-// ---------------------------------------------------------
+// =========================================================
+// GENERATE TRANSACTION ID
+// =========================================================
+
+function generateTransactionId() {
+
+    return crypto.randomUUID();
+}
+
+
+// =========================================================
+// LOG SMS TRANSACTION TO SFMC
+// =========================================================
 
 async function logTransaction({
+
     transactionId,
+
     contactKey,
+
     mobileNumber,
+
     message,
+
     status,
+
     reason = "",
+
     twilioMessageSid = "",
+
     errorCode = "",
+
     errorMessage = "",
+
     consentStatus = ""
+
 }) {
 
     try {
 
         const {
             getAccessToken
-        } = require("./services/sfmcAuth");
+        } = require(
+            "./services/sfmcAuth"
+        );
+
 
         const token =
             await getAccessToken();
 
+
         const restBase =
-            process.env.SFMC_REST_BASE_URI
+            process.env
+                .SFMC_REST_BASE_URI
                 .replace(/\/$/, "");
 
+
         const deKey =
-            process.env.SFMC_TRANSACTION_DE_KEY;
+            process.env
+                .SFMC_TRANSACTION_DE_KEY;
+
+
+        if (!deKey) {
+
+            console.error(
+                "SFMC_TRANSACTION_DE_KEY is missing"
+            );
+
+            return;
+        }
+
 
         const url =
-            `${restBase}/hub/v1/dataevents/key/` +
-            `${encodeURIComponent(deKey)}/rowset`;
+            `${restBase}` +
+            `/hub/v1/dataevents/key/` +
+            `${encodeURIComponent(deKey)}` +
+            `/rowset`;
+
 
         const payload = [
+
             {
+
                 keys: {
+
                     TransactionId:
                         transactionId
+
                 },
 
                 values: {
@@ -305,36 +441,55 @@ async function logTransaction({
             }
         ];
 
+
         const response =
             await fetch(
                 url,
                 {
+
                     method: "POST",
 
                     headers: {
+
                         Authorization:
                             `Bearer ${token}`,
 
                         "Content-Type":
+                            "application/json",
+
+                        Accept:
                             "application/json"
                     },
 
                     body:
-                        JSON.stringify(payload)
+                        JSON.stringify(
+                            payload
+                        )
                 }
             );
 
-        if (!response.ok) {
 
-            const body =
-                await response.text();
+        const responseText =
+            await response.text();
+
+
+        if (!response.ok) {
 
             console.error(
                 "Transaction log failed:",
                 response.status,
-                body
+                responseText
             );
+
+            return;
         }
+
+
+        console.log(
+            "Transaction successfully logged:",
+            transactionId
+        );
+
 
     } catch (error) {
 
@@ -346,9 +501,9 @@ async function logTransaction({
 }
 
 
-// ---------------------------------------------------------
+// =========================================================
 // VERIFY JOURNEY BUILDER JWT
-// ---------------------------------------------------------
+// =========================================================
 
 function verifyJourneyJWT(req) {
 
@@ -359,8 +514,11 @@ function verifyJourneyJWT(req) {
         );
     }
 
+
     let token;
 
+
+    // Journey Builder sends application/jwt.
     if (
         Buffer.isBuffer(req.body)
     ) {
@@ -368,19 +526,36 @@ function verifyJourneyJWT(req) {
         token =
             req.body.toString("utf8");
 
-    } else if (
+    }
+
+    else if (
         typeof req.body === "string"
     ) {
 
         token =
             req.body;
 
-    } else {
+    }
+
+    else {
 
         throw new Error(
             "JWT request body is not valid"
         );
     }
+
+
+    token =
+        token.trim();
+
+
+    if (!token) {
+
+        throw new Error(
+            "Empty Journey Builder JWT"
+        );
+    }
+
 
     return jwt.verify(
         token,
@@ -389,14 +564,35 @@ function verifyJourneyJWT(req) {
 }
 
 
-// ---------------------------------------------------------
-// EXECUTE JOURNEY ACTIVITY
-// ---------------------------------------------------------
+// =========================================================
+// JOURNEY BUILDER EXECUTE
+// =========================================================
+//
+// Flow:
+//
+// Journey
+//    ↓
+// JWT
+//    ↓
+// ContactKey
+//    ↓
+// Phone
+//    ↓
+// Message
+//    ↓
+// SFMC Consent
+//    ↓
+// SMSOptIn?
+//    ↓
+// YES → Twilio
+// NO  → Skip
+//
+// =========================================================
 
 app.post(
+
     "/execute",
 
-    // Journey Builder sends application/jwt.
     express.raw({
         type: "application/jwt"
     }),
@@ -406,27 +602,46 @@ app.post(
         const transactionId =
             generateTransactionId();
 
+
         let contactKey = "";
+
         let phone = "";
+
         let message = "";
+
 
         try {
 
-            // ---------------------------------------------
+            // =================================================
             // 1. VERIFY JWT
-            // ---------------------------------------------
+            // =================================================
 
             const decoded =
                 verifyJourneyJWT(req);
 
+
             console.log(
-                "Journey JWT successfully verified"
+                "Journey Builder JWT verified successfully"
             );
 
 
-            // ---------------------------------------------
-            // 2. READ IN ARGUMENTS
-            // ---------------------------------------------
+            // =================================================
+            // DEBUG JWT
+            // =================================================
+
+            console.log(
+                "JWT payload:",
+                JSON.stringify(
+                    decoded,
+                    null,
+                    2
+                )
+            );
+
+
+            // =================================================
+            // 2. GET IN ARGUMENTS
+            // =================================================
 
             if (
                 !decoded.inArguments ||
@@ -441,117 +656,206 @@ app.post(
                 );
             }
 
-            const inArgs =
-                decoded.inArguments[0];
 
+            /*
+             * Depending on the Journey Builder payload,
+             * inArguments can contain multiple objects.
+             *
+             * We merge them into one object.
+             */
+
+            const inArgs =
+                Object.assign(
+                    {},
+                    ...decoded.inArguments
+                );
+
+
+            console.log(
+                "Merged inArguments:",
+                JSON.stringify(
+                    inArgs,
+                    null,
+                    2
+                )
+            );
+
+
+            // =================================================
+            // 3. CONTACT KEY
+            // =================================================
 
             contactKey =
                 inArgs.contactKey ||
+                inArgs.ContactKey ||
                 "";
+
+
+            // =================================================
+            // 4. PHONE NUMBER
+            // =================================================
 
             phone =
                 normalizePhone(
-                    inArgs.phoneNumber
+                    inArgs.phoneNumber ||
+                    inArgs.PhoneNumber ||
+                    inArgs.mobileNumber ||
+                    inArgs.MobileNumber
                 );
+
+
+            // =================================================
+            // 5. MESSAGE
+            // =================================================
 
             message =
                 inArgs.message ||
+                inArgs.Message ||
                 "";
 
 
             console.log(
-                "Journey request:",
+                "Journey values:",
                 {
+
                     transactionId,
+
                     contactKey,
+
                     phone,
+
                     messageLength:
-                        message.length
+                        String(message).length
                 }
             );
 
 
-            // ---------------------------------------------
-            // 3. VALIDATE CONTACT KEY
-            // ---------------------------------------------
+            // =================================================
+            // 6. CONTACT KEY VALIDATION
+            // =================================================
 
             if (!contactKey) {
 
                 await logTransaction({
 
                     transactionId,
+
                     contactKey,
-                    mobileNumber: phone,
+
+                    mobileNumber:
+                        phone,
+
                     message,
-                    status: "SKIPPED",
-                    reason: "MISSING_CONTACT_KEY"
-                });
 
-                return res.status(200).json({
-
-                    status: "skipped",
+                    status:
+                        "SKIPPED",
 
                     reason:
                         "MISSING_CONTACT_KEY"
                 });
+
+
+                return res.status(200).json({
+
+                    status:
+                        "skipped",
+
+                    reason:
+                        "MISSING_CONTACT_KEY",
+
+                    transactionId
+                });
             }
 
 
-            // ---------------------------------------------
-            // 4. VALIDATE PHONE
-            // ---------------------------------------------
+            // =================================================
+            // 7. PHONE VALIDATION
+            // =================================================
 
             if (!phone) {
 
                 await logTransaction({
 
                     transactionId,
+
                     contactKey,
-                    mobileNumber: "",
+
+                    mobileNumber:
+                        "",
+
                     message,
-                    status: "SKIPPED",
-                    reason: "MISSING_PHONE"
-                });
 
-                return res.status(200).json({
-
-                    status: "skipped",
+                    status:
+                        "SKIPPED",
 
                     reason:
                         "MISSING_PHONE"
                 });
+
+
+                return res.status(200).json({
+
+                    status:
+                        "skipped",
+
+                    reason:
+                        "MISSING_PHONE",
+
+                    transactionId
+                });
             }
 
 
-            // ---------------------------------------------
-            // 5. VALIDATE MESSAGE
-            // ---------------------------------------------
+            // =================================================
+            // 8. MESSAGE VALIDATION
+            // =================================================
 
-            if (!message.trim()) {
+            if (
+                !String(message)
+                    .trim()
+            ) {
 
                 await logTransaction({
 
                     transactionId,
+
                     contactKey,
-                    mobileNumber: phone,
+
+                    mobileNumber:
+                        phone,
+
                     message,
-                    status: "SKIPPED",
-                    reason: "EMPTY_MESSAGE"
-                });
 
-                return res.status(200).json({
-
-                    status: "skipped",
+                    status:
+                        "SKIPPED",
 
                     reason:
                         "EMPTY_MESSAGE"
                 });
+
+
+                return res.status(200).json({
+
+                    status:
+                        "skipped",
+
+                    reason:
+                        "EMPTY_MESSAGE",
+
+                    transactionId
+                });
             }
 
 
-            // ---------------------------------------------
-            // 6. LIVE SFMC CONSENT CHECK
-            // ---------------------------------------------
+            // =================================================
+            // 9. LIVE CONSENT LOOKUP
+            // =================================================
+
+            console.log(
+                "Checking SFMC consent for:",
+                contactKey
+            );
+
 
             const consent =
                 await getConsent(
@@ -559,117 +863,219 @@ app.post(
                 );
 
 
-            // ---------------------------------------------
-            // NO CONSENT RECORD
-            // ---------------------------------------------
+            // =================================================
+            // 10. NO CONSENT RECORD
+            // =================================================
 
             if (!consent) {
 
                 console.log(
-                    `No consent record for ${contactKey}`
+                    "No consent record found:",
+                    contactKey
                 );
+
 
                 await logTransaction({
 
                     transactionId,
+
                     contactKey,
-                    mobileNumber: phone,
+
+                    mobileNumber:
+                        phone,
+
                     message,
-                    status: "SKIPPED",
-                    reason: "NO_CONSENT_RECORD",
+
+                    status:
+                        "SKIPPED",
+
+                    reason:
+                        "NO_CONSENT_RECORD",
+
                     consentStatus:
                         "NO_RECORD"
                 });
 
+
                 return res.status(200).json({
 
-                    status: "skipped",
+                    status:
+                        "skipped",
 
                     reason:
-                        "NO_CONSENT_RECORD"
+                        "NO_CONSENT_RECORD",
+
+                    transactionId
                 });
             }
 
 
-            // ---------------------------------------------
-            // OPTED OUT
-            // ---------------------------------------------
+            // =================================================
+            // 11. LOG CONSENT RECORD
+            // =================================================
 
-            if (
-                consent.SMSOptIn !== true
-            ) {
+            console.log(
+                "Consent record:",
+                JSON.stringify(
+                    consent,
+                    null,
+                    2
+                )
+            );
+
+
+            // =================================================
+            // 12. CHECK SMS OPT-IN
+            // =================================================
+
+            const smsOptIn =
+                consent.SMSOptIn;
+
+
+            /*
+             * SFMC Boolean fields can sometimes arrive
+             * as true/false or strings depending on API.
+             */
+
+            const isOptedIn =
+                smsOptIn === true ||
+                String(
+                    smsOptIn
+                ).toLowerCase() === "true" ||
+                String(
+                    smsOptIn
+                ) === "1";
+
+
+            console.log(
+                "SMSOptIn:",
+                smsOptIn
+            );
+
+            console.log(
+                "isOptedIn:",
+                isOptedIn
+            );
+
+
+            // =================================================
+            // 13. BLOCK OPTED-OUT CUSTOMER
+            // =================================================
+
+            if (!isOptedIn) {
 
                 console.log(
-                    `SMS blocked for ${contactKey}`
+                    `SMS BLOCKED - Contact ${contactKey} is opted out`
                 );
+
 
                 await logTransaction({
 
                     transactionId,
+
                     contactKey,
-                    mobileNumber: phone,
+
+                    mobileNumber:
+                        phone,
+
                     message,
-                    status: "SKIPPED",
-                    reason: "SMS_OPT_OUT",
+
+                    status:
+                        "SKIPPED",
+
+                    reason:
+                        "SMS_OPT_OUT",
+
                     consentStatus:
                         "OPTED_OUT"
                 });
 
+
                 return res.status(200).json({
 
-                    status: "skipped",
+                    status:
+                        "skipped",
 
                     reason:
-                        "SMS_OPT_OUT"
+                        "SMS_OPT_OUT",
+
+                    transactionId
                 });
             }
 
 
-            // ---------------------------------------------
-            // 7. SEND SMS
-            // ---------------------------------------------
+            // =================================================
+            // 14. SEND SMS
+            // =================================================
 
             console.log(
-                `Sending SMS to ${phone}`
+                "Consent is TRUE."
             );
+
+            console.log(
+                "Sending SMS through Twilio:",
+                phone
+            );
+
 
             const twilioMessage =
                 await sendSMS({
 
-                    to: phone,
+                    to:
+                        phone,
 
-                    body: message
+                    body:
+                        String(message)
                 });
 
 
-            // ---------------------------------------------
-            // 8. LOG SUCCESS
-            // ---------------------------------------------
+            // =================================================
+            // 15. LOG SUCCESS
+            // =================================================
 
             await logTransaction({
 
                 transactionId,
+
                 contactKey,
-                mobileNumber: phone,
+
+                mobileNumber:
+                    phone,
+
                 message,
-                status: "SENT",
-                reason: "",
+
+                status:
+                    "SENT",
+
+                reason:
+                    "",
+
                 twilioMessageSid:
                     twilioMessage.sid,
+
                 consentStatus:
                     "OPTED_IN"
             });
 
 
             console.log(
-                "SMS successfully sent:",
+                "SMS successfully sent."
+            );
+
+            console.log(
+                "Twilio SID:",
                 twilioMessage.sid
             );
 
 
+            // =================================================
+            // 16. RETURN SUCCESS
+            // =================================================
+
             return res.status(200).json({
 
-                status: "success",
+                status:
+                    "success",
 
                 transactionId,
 
@@ -678,49 +1084,467 @@ app.post(
             });
 
 
-        } catch (error) {
+        }
+
+        catch (error) {
 
             console.error(
-                "Execute error:",
+                "EXECUTE ERROR:",
                 error
             );
 
 
+            // =================================================
+            // LOG ERROR
+            // =================================================
+
             await logTransaction({
 
                 transactionId,
+
                 contactKey,
-                mobileNumber: phone,
+
+                mobileNumber:
+                    phone,
+
                 message,
-                status: "ERROR",
-                reason: "EXECUTE_ERROR",
+
+                status:
+                    "ERROR",
+
+                reason:
+                    "EXECUTE_ERROR",
+
                 errorMessage:
                     error.message
             });
 
 
+            /*
+             * Return HTTP 200 so that a normal consent
+             * suppression or controlled execution result
+             * does not unnecessarily create a Journey
+             * system failure.
+             */
+
             return res.status(200).json({
 
-                status: "error",
+                status:
+                    "error",
 
                 transactionId,
 
                 reason:
-                    "EXECUTE_ERROR"
+                    "EXECUTE_ERROR",
+
+                message:
+                    error.message
             });
         }
     }
 );
 
 
-// ---------------------------------------------------------
-// TWILIO WEBHOOK AUTHENTICATION
-// ---------------------------------------------------------
+// =========================================================
+// FIND CONSENT BY MOBILE NUMBER
+// =========================================================
+//
+// IMPORTANT:
+//
+// Your DE contains:
+//
+// 916377783635
+//
+// Twilio uses:
+//
+// +916377783635
+//
+// This function removes + and other characters before
+// querying SFMC.
+//
+// =========================================================
+
+async function findConsentByMobile(
+    mobileNumber
+) {
+
+    try {
+
+        const {
+            getAccessToken
+        } = require(
+            "./services/sfmcAuth"
+        );
+
+
+        // =================================================
+        // GET SFMC TOKEN
+        // =================================================
+
+        const token =
+            await getAccessToken();
+
+
+        // =================================================
+        // SFMC REST URL
+        // =================================================
+
+        const restBase =
+            process.env
+                .SFMC_REST_BASE_URI
+                .replace(/\/$/, "");
+
+
+        const deKey =
+            process.env
+                .SFMC_CONSENT_DE_KEY;
+
+
+        if (!deKey) {
+
+            throw new Error(
+                "SFMC_CONSENT_DE_KEY is not configured"
+            );
+        }
+
+
+        // =================================================
+        // CLEAN NUMBER
+        // =================================================
+        //
+        // +916377783635
+        //       ↓
+        // 916377783635
+        //
+        // =================================================
+
+        const cleanNumber =
+            cleanMobileForSFMC(
+                mobileNumber
+            );
+
+
+        if (!cleanNumber) {
+
+            console.error(
+                "Invalid mobile number:",
+                mobileNumber
+            );
+
+            return null;
+        }
+
+
+        console.log(
+            "Original Mobile Number:",
+            mobileNumber
+        );
+
+        console.log(
+            "Mobile Number used for SFMC lookup:",
+            cleanNumber
+        );
+
+
+        // =================================================
+        // SFMC FILTER
+        // =================================================
+
+        const filter =
+            `MobileNumber eq '${cleanNumber}'`;
+
+
+        const url =
+            `${restBase}` +
+            `/data/v1/customobjectdata/key/` +
+            `${encodeURIComponent(deKey)}` +
+            `/rowset` +
+            `?$filter=` +
+            `${encodeURIComponent(filter)}`;
+
+
+        console.log(
+            "SFMC Consent Lookup URL:",
+            url
+        );
+
+
+        // =================================================
+        // CALL SFMC
+        // =================================================
+
+        const response =
+            await fetch(
+                url,
+                {
+
+                    method:
+                        "GET",
+
+                    headers: {
+
+                        Authorization:
+                            `Bearer ${token}`,
+
+                        Accept:
+                            "application/json"
+                    }
+                }
+            );
+
+
+        const responseText =
+            await response.text();
+
+
+        console.log(
+            "SFMC Consent API Status:",
+            response.status
+        );
+
+
+        console.log(
+            "SFMC Consent API Response:",
+            responseText
+        );
+
+
+        // =================================================
+        // SFMC API ERROR
+        // =================================================
+
+        if (!response.ok) {
+
+            throw new Error(
+
+                `SFMC consent mobile lookup failed: ` +
+
+                `${response.status} ` +
+
+                `${responseText}`
+            );
+        }
+
+
+        // =================================================
+        // PARSE RESPONSE
+        // =================================================
+
+        let data;
+
+
+        try {
+
+            data =
+                JSON.parse(
+                    responseText
+                );
+
+        }
+
+        catch (error) {
+
+            throw new Error(
+
+                `Invalid SFMC API response: ` +
+
+                `${responseText}`
+            );
+        }
+
+
+        // =================================================
+        // NO RECORD
+        // =================================================
+
+        if (
+            !data.items ||
+            !Array.isArray(
+                data.items
+            ) ||
+            data.items.length === 0
+        ) {
+
+            console.log(
+                "No consent record found for:",
+                cleanNumber
+            );
+
+            return null;
+        }
+
+
+        // =================================================
+        // RECORD FOUND
+        // =================================================
+
+        const record =
+            data.items[0].values ||
+            data.items[0];
+
+
+        console.log(
+            "Consent record found:",
+            JSON.stringify(
+                record,
+                null,
+                2
+            )
+        );
+
+
+        return record;
+
+    }
+
+    catch (error) {
+
+        console.error(
+            "findConsentByMobile ERROR:",
+            error
+        );
+
+        throw error;
+    }
+}
+
+
+// =========================================================
+// DEBUG - FIND CONSENT BY MOBILE
+// =========================================================
+//
+// TEST:
+//
+// /debug/consent?mobileNumber=916377783635
+//
+// TEMPORARY DEBUG ENDPOINT.
+// REMOVE OR PROTECT BEFORE PRODUCTION.
+//
+// =========================================================
+
+app.get(
+    "/debug/consent",
+    async (req, res) => {
+
+        try {
+
+            const mobileNumber =
+                req.query.mobileNumber;
+
+
+            if (!mobileNumber) {
+
+                return res.status(400).json({
+
+                    found:
+                        false,
+
+                    error:
+                        "mobileNumber is required"
+                });
+            }
+
+
+            const normalizedPhone =
+                normalizePhone(
+                    mobileNumber
+                );
+
+
+            console.log(
+                "DEBUG consent lookup"
+            );
+
+
+            console.log(
+                "Input:",
+                mobileNumber
+            );
+
+
+            console.log(
+                "Normalized:",
+                normalizedPhone
+            );
+
+
+            const record =
+                await findConsentByMobile(
+                    normalizedPhone
+                );
+
+
+            if (!record) {
+
+                return res.status(404).json({
+
+                    found:
+                        false,
+
+                    mobileNumber:
+                        normalizedPhone,
+
+                    sfmcMobileNumber:
+                        cleanMobileForSFMC(
+                            normalizedPhone
+                        ),
+
+                    message:
+                        "No consent record found"
+                });
+            }
+
+
+            return res.status(200).json({
+
+                found:
+                    true,
+
+                mobileNumber:
+                    normalizedPhone,
+
+                sfmcMobileNumber:
+                    cleanMobileForSFMC(
+                        normalizedPhone
+                    ),
+
+                consent:
+                    record
+            });
+
+
+        }
+
+        catch (error) {
+
+            console.error(
+                "DEBUG consent error:",
+                error
+            );
+
+
+            return res.status(500).json({
+
+                found:
+                    false,
+
+                error:
+                    error.message
+            });
+        }
+    }
+);
+
+
+// =========================================================
+// VERIFY TWILIO WEBHOOK
+// =========================================================
 
 function verifyTwilioRequest(req) {
 
     const authToken =
         process.env.TWILIO_AUTH_TOKEN;
+
 
     if (!authToken) {
 
@@ -735,47 +1559,90 @@ function verifyTwilioRequest(req) {
             "X-Twilio-Signature"
         );
 
+
     if (!signature) {
+
+        console.error(
+            "X-Twilio-Signature header missing"
+        );
 
         return false;
     }
 
 
     const url =
-        `${PUBLIC_BASE_URL}${req.originalUrl}`;
+        `${PUBLIC_BASE_URL}` +
+        `${req.originalUrl}`;
+
+
+    console.log(
+        "Twilio signature validation URL:",
+        url
+    );
 
 
     return twilio.validateRequest(
+
         authToken,
+
         signature,
+
         url,
+
         req.body
+
     );
 }
 
 
-// ---------------------------------------------------------
+// =========================================================
 // TWILIO INBOUND SMS WEBHOOK
-// ---------------------------------------------------------
+// =========================================================
+//
+// Twilio:
+//
+// Customer → STOP
+//       ↓
+// Twilio
+//       ↓
+// POST /twilio/inbound
+//       ↓
+// Find MobileNumber in SFMC
+//       ↓
+// Get ContactKey
+//       ↓
+// SMSOptIn = FALSE
+//
+// =========================================================
 
 app.post(
     "/twilio/inbound",
-
     async (req, res) => {
 
         try {
 
             console.log(
-                "Twilio inbound message received"
+                "================================================"
+            );
+
+            console.log(
+                "TWILIO INBOUND MESSAGE"
+            );
+
+            console.log(
+                "================================================"
             );
 
 
-            // ---------------------------------------------
-            // SECURITY CHECK
-            // ---------------------------------------------
+            // =================================================
+            // VERIFY TWILIO SIGNATURE
+            // =================================================
 
             const valid =
-                verifyTwilioRequest(req);
+                verifyTwilioRequest(
+                    req
+                );
+
 
             if (!valid) {
 
@@ -789,14 +1656,15 @@ app.post(
             }
 
 
-            // ---------------------------------------------
-            // READ TWILIO MESSAGE
-            // ---------------------------------------------
+            // =================================================
+            // GET TWILIO VALUES
+            // =================================================
 
             const from =
                 normalizePhone(
                     req.body.From
                 );
+
 
             const body =
                 String(
@@ -805,47 +1673,66 @@ app.post(
                 .trim()
                 .toUpperCase();
 
+
             const messageSid =
                 req.body.MessageSid ||
                 "";
 
 
             console.log(
-                "Inbound SMS:",
-                {
-                    from,
-                    body,
-                    messageSid
-                }
+                "From:",
+                from
             );
 
 
-            // ---------------------------------------------
+            console.log(
+                "Body:",
+                body
+            );
+
+
+            console.log(
+                "Message SID:",
+                messageSid
+            );
+
+
+            // =================================================
             // OPT-OUT KEYWORDS
-            // ---------------------------------------------
+            // =================================================
 
             const optOutKeywords = [
+
                 "STOP",
+
                 "UNSUBSCRIBE",
+
                 "CANCEL",
+
                 "END",
+
                 "QUIT"
             ];
 
 
+            // =================================================
+            // CHECK OPT-OUT
+            // =================================================
+
             if (
-                optOutKeywords.includes(body)
+                optOutKeywords.includes(
+                    body
+                )
             ) {
 
-                /*
-                 * IMPORTANT:
-                 *
-                 * We need ContactKey to update SFMC.
-                 *
-                 * Since the inbound SMS only contains
-                 * the phone number, we look up the
-                 * consent DE by mobile number.
-                 */
+                console.log(
+                    "OPT-OUT KEYWORD DETECTED"
+                );
+
+
+                // =================================================
+                // FIND SFMC CONSENT RECORD
+                // =================================================
 
                 const contact =
                     await findConsentByMobile(
@@ -855,63 +1742,167 @@ app.post(
 
                 if (contact) {
 
-                    await optOut({
-
-                        contactKey:
-                            contact.ContactKey,
-
-                        mobileNumber:
-                            from,
-
-                        source:
-                            "Twilio",
-
-                        consentVersion:
-                            contact.ConsentVersion ||
-                            "v1"
-                    });
+                    const contactKey =
+                        contact.ContactKey ||
+                        contact.contactKey;
 
 
                     console.log(
-                        `Opt-out recorded for ${contact.ContactKey}`
+                        "ContactKey found:",
+                        contactKey
                     );
 
-                } else {
+
+                    if (!contactKey) {
+
+                        console.error(
+                            "Consent record found but ContactKey is missing"
+                        );
+
+                    }
+
+                    else {
+
+                        // =========================================
+                        // UPDATE SFMC CONSENT
+                        // =========================================
+
+                        await optOut({
+
+                            contactKey:
+
+                                contactKey,
+
+                            mobileNumber:
+
+                                cleanMobileForSFMC(
+                                    from
+                                ),
+
+                            source:
+
+                                "Twilio",
+
+                            consentVersion:
+
+                                contact.ConsentVersion ||
+                                "v1"
+                        });
+
+
+                        console.log(
+                            "SFMC opt-out successfully updated"
+                        );
+
+
+                        // =========================================
+                        // LOG TRANSACTION
+                        // =========================================
+
+                        await logTransaction({
+
+                            transactionId:
+                                messageSid ||
+                                generateTransactionId(),
+
+                            contactKey:
+
+                                contactKey,
+
+                            mobileNumber:
+
+                                cleanMobileForSFMC(
+                                    from
+                                ),
+
+                            message:
+
+                                body,
+
+                            status:
+
+                                "OPTED_OUT",
+
+                            reason:
+
+                                "TWILIO_STOP",
+
+                            twilioMessageSid:
+
+                                messageSid,
+
+                            consentStatus:
+
+                                "OPTED_OUT"
+                        });
+                    }
+
+                }
+
+                else {
 
                     console.warn(
-                        `No SFMC consent record found for ${from}`
+                        "No SFMC consent record found for:",
+                        cleanMobileForSFMC(from)
                     );
                 }
+
+            }
+
+            else {
+
+                console.log(
+                    "Message is not an opt-out keyword"
+                );
             }
 
 
-            // ---------------------------------------------
-            // RETURN TWIML
-            // ---------------------------------------------
+            // =================================================
+            // TWILIO RESPONSE
+            // =================================================
 
-            res.type("text/xml");
+            res.type(
+                "text/xml"
+            );
+
 
             return res
                 .status(200)
                 .send(
-                    "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" +
+
+                    "<?xml version=\"1.0\" " +
+                    "encoding=\"UTF-8\"?>" +
+
                     "<Response></Response>"
                 );
 
 
-        } catch (error) {
+        }
+
+        catch (error) {
 
             console.error(
-                "Twilio inbound error:",
+                "TWILIO INBOUND ERROR:",
                 error
             );
 
-            res.type("text/xml");
+
+            /*
+             * Return valid TwiML even on internal errors.
+             */
+
+            res.type(
+                "text/xml"
+            );
+
 
             return res
                 .status(200)
                 .send(
-                    "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" +
+
+                    "<?xml version=\"1.0\" " +
+                    "encoding=\"UTF-8\"?>" +
+
                     "<Response></Response>"
                 );
         }
@@ -919,140 +1910,94 @@ app.post(
 );
 
 
-// ---------------------------------------------------------
-// FIND CONSENT BY MOBILE NUMBER
-// ---------------------------------------------------------
-
-async function findConsentByMobile(
-    mobileNumber
-) {
-
-    const {
-        getAccessToken
-    } = require("./services/sfmcAuth");
-
-    const token =
-        await getAccessToken();
-
-    const restBase =
-        process.env.SFMC_REST_BASE_URI
-            .replace(/\/$/, "");
-
-    const deKey =
-        process.env.SFMC_CONSENT_DE_KEY;
-
-    const escapedNumber =
-        String(mobileNumber)
-            .replace(/'/g, "''");
-
-    const filter =
-        `MobileNumber eq '${escapedNumber}'`;
-
-    const url =
-        `${restBase}/data/v1/customobjectdata/key/` +
-        `${encodeURIComponent(deKey)}/rowset` +
-        `?$filter=${encodeURIComponent(filter)}`;
-
-
-    const response =
-        await fetch(
-            url,
-            {
-                method: "GET",
-
-                headers: {
-                    Authorization:
-                        `Bearer ${token}`,
-
-                    Accept:
-                        "application/json"
-                }
-            }
-        );
-
-
-    if (!response.ok) {
-
-        const body =
-            await response.text();
-
-        throw new Error(
-            `SFMC consent mobile lookup failed: ${response.status} ${body}`
-        );
-    }
-
-
-    const data =
-        await response.json();
-
-
-    if (
-        !data.items ||
-        !data.items.length
-    ) {
-
-        return null;
-    }
-
-
-    return (
-        data.items[0].values ||
-        data.items[0]
-    );
-}
-
-
-// ---------------------------------------------------------
-// OPTIONAL OPT-IN API
-// ---------------------------------------------------------
+// =========================================================
+// OPT-IN API
+// =========================================================
 //
-// This can be called from your CloudPage/backend.
+// Use this from your Preference Center.
 //
-// Do NOT expose this endpoint publicly without
-// authentication.
-// ---------------------------------------------------------
+// POST /consent/optin
+//
+// Header:
+//
+// X-API-Key: YOUR_WEBHOOK_API_KEY
+//
+// Body:
+//
+// {
+//   "contactKey": "12345",
+//   "mobileNumber": "916377783635",
+//   "source": "Preference Center",
+//   "consentVersion": "v1"
+// }
+//
+// =========================================================
 
 app.post(
     "/consent/optin",
-
     async (req, res) => {
 
         try {
 
+            // =================================================
+            // API KEY
+            // =================================================
+
             if (
                 WEBHOOK_API_KEY &&
-                req.get("X-API-Key") !==
-                WEBHOOK_API_KEY
+                req.get(
+                    "X-API-Key"
+                ) !== WEBHOOK_API_KEY
             ) {
 
                 return res
                     .status(401)
                     .json({
-                        status: "error",
-                        reason: "UNAUTHORIZED"
+
+                        status:
+                            "error",
+
+                        reason:
+                            "UNAUTHORIZED"
                     });
             }
 
 
             const {
+
                 contactKey,
+
                 mobileNumber,
+
                 source,
+
                 consentVersion
+
             } = req.body;
 
+
+            // =================================================
+            // CONTACT KEY VALIDATION
+            // =================================================
 
             if (!contactKey) {
 
                 return res
                     .status(400)
                     .json({
-                        status: "error",
+
+                        status:
+                            "error",
+
                         reason:
                             "MISSING_CONTACT_KEY"
                     });
             }
 
+
+            // =================================================
+            // MOBILE
+            // =================================================
 
             const normalizedPhone =
                 normalizePhone(
@@ -1060,48 +2005,75 @@ app.post(
                 );
 
 
+            // =================================================
+            // UPDATE CONSENT
+            // =================================================
+
             const result =
                 await optIn({
 
-                    contactKey,
+                    contactKey:
+
+                        contactKey,
 
                     mobileNumber:
-                        normalizedPhone,
+
+                        cleanMobileForSFMC(
+                            normalizedPhone
+                        ),
 
                     source:
+
                         source ||
                         "Preference Center",
 
                     consentVersion:
+
                         consentVersion ||
                         "v1"
                 });
 
 
+            // =================================================
+            // RESPONSE
+            // =================================================
+
             return res
                 .status(200)
                 .json({
 
-                    status: "success",
+                    status:
+                        "success",
 
-                    contactKey,
+                    contactKey:
+                        contactKey,
 
-                    result
+                    mobileNumber:
+                        cleanMobileForSFMC(
+                            normalizedPhone
+                        ),
+
+                    result:
+                        result
                 });
 
 
-        } catch (error) {
+        }
+
+        catch (error) {
 
             console.error(
-                "Opt-in error:",
+                "OPT-IN ERROR:",
                 error
             );
+
 
             return res
                 .status(500)
                 .json({
 
-                    status: "error",
+                    status:
+                        "error",
 
                     reason:
                         "OPT_IN_FAILED",
@@ -1114,59 +2086,162 @@ app.post(
 );
 
 
-// ---------------------------------------------------------
-// 404
-// ---------------------------------------------------------
+// =========================================================
+// TEST / DEBUG - PHONE NORMALIZATION
+// =========================================================
+
+app.get(
+    "/debug/phone",
+    (req, res) => {
+
+        const input =
+            req.query.phone;
+
+
+        if (!input) {
+
+            return res.status(400).json({
+
+                error:
+                    "phone query parameter is required"
+            });
+        }
+
+
+        const normalized =
+            normalizePhone(
+                input
+            );
+
+
+        const sfmcNumber =
+            cleanMobileForSFMC(
+                normalized
+            );
+
+
+        return res.status(200).json({
+
+            input:
+
+                input,
+
+            twilioFormat:
+
+                normalized,
+
+            sfmcFormat:
+
+                sfmcNumber
+        });
+    }
+);
+
+
+// =========================================================
+// 404 HANDLER
+// =========================================================
 
 app.use(
     (req, res) => {
 
-        res.status(404).json({
-            status: "not_found"
-        });
+        return res
+            .status(404)
+            .json({
+
+                status:
+                    "not_found",
+
+                path:
+                    req.originalUrl
+            });
     }
 );
 
 
-// ---------------------------------------------------------
+// =========================================================
 // GLOBAL ERROR HANDLER
-// ---------------------------------------------------------
+// =========================================================
 
 app.use(
-    (error, req, res, next) => {
+    (
+        error,
+        req,
+        res,
+        next
+    ) => {
 
         console.error(
-            "Unhandled error:",
+            "GLOBAL ERROR:",
             error
         );
+
 
         if (
             res.headersSent
         ) {
-            return next(error);
+
+            return next(
+                error
+            );
         }
 
-        res.status(500).json({
-            status: "error"
-        });
+
+        return res
+            .status(500)
+            .json({
+
+                status:
+                    "error",
+
+                message:
+                    error.message
+            });
     }
 );
 
 
-// ---------------------------------------------------------
+// =========================================================
 // START SERVER
-// ---------------------------------------------------------
+// =========================================================
+//
+// IMPORTANT:
+// Only ONE app.listen() should exist.
+//
+// Render provides process.env.PORT.
+//
+// =========================================================
 
 app.listen(
     PORT,
     () => {
 
         console.log(
-            `Twilio Custom Activity Server running on port ${PORT}`
+            "================================================"
         );
 
         console.log(
-            `Webhook URL: ${PUBLIC_BASE_URL}/twilio/inbound`
+            "SFMC TWILIO CUSTOM ACTIVITY"
+        );
+
+        console.log(
+            "================================================"
+        );
+
+        console.log(
+            `Server running on port ${PORT}`
+        );
+
+        console.log(
+            `Health URL: ${PUBLIC_BASE_URL}/health`
+        );
+
+        console.log(
+            `Twilio Webhook: ${PUBLIC_BASE_URL}/twilio/inbound`
+        );
+
+        console.log(
+            "================================================"
         );
     }
 );
