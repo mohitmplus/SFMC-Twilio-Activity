@@ -1,12 +1,18 @@
 {
   "name": "sfmc-twilio-activity",
-  "version": "1.0.0",
-  "description": "",
+  "version": "2.0.0",
+  "description": "Salesforce Marketing Cloud Journey Builder Twilio SMS Custom Activity with consent management",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
-  "keywords": [],
+  "keywords": [
+    "salesforce",
+    "sfmc",
+    "journey-builder",
+    "twilio",
+    "sms"
+  ],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
