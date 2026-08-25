@@ -11,6 +11,7 @@ function getRestBaseUrl() {
         process.env.SFMC_REST_BASE_URI;
 
     if (!baseUrl) {
+
         throw new Error(
             "SFMC_REST_BASE_URI is not configured"
         );
@@ -23,7 +24,7 @@ function getRestBaseUrl() {
 
 
 // =========================================================
-// ENVIRONMENT VARIABLE
+// REQUIRED ENVIRONMENT VARIABLE
 // =========================================================
 
 function requireEnv(name) {
@@ -40,7 +41,75 @@ function requireEnv(name) {
 
 
 // =========================================================
-// SFMC API REQUEST
+// BOOLEAN CONVERSION
+// =========================================================
+
+function toBoolean(value) {
+
+    if (
+        value === true ||
+        value === 1
+    ) {
+
+        return true;
+    }
+
+    if (
+        value === false ||
+        value === 0 ||
+        value === null ||
+        value === undefined
+    ) {
+
+        return false;
+    }
+
+    return (
+        String(value)
+            .trim()
+            .toLowerCase() === "true" ||
+        String(value)
+            .trim() === "1" ||
+        String(value)
+            .trim()
+            .toLowerCase() === "yes"
+    );
+}
+
+
+// =========================================================
+// NORMALIZE MOBILE NUMBER
+// =========================================================
+//
+// Twilio:
+//
+// +916377783635
+//
+// SFMC:
+//
+// 916377783635
+//
+// =========================================================
+
+function normalizeMobileNumber(
+    mobileNumber
+) {
+
+    if (
+        mobileNumber === undefined ||
+        mobileNumber === null
+    ) {
+
+        return "";
+    }
+
+    return String(mobileNumber)
+        .replace(/\D/g, "");
+}
+
+
+// =========================================================
+// GENERIC SFMC REQUEST
 // =========================================================
 
 async function sfmcRequest(
@@ -64,7 +133,9 @@ async function sfmcRequest(
 
             Accept:
                 "application/json"
+
         }
+
     };
 
 
@@ -77,13 +148,6 @@ async function sfmcRequest(
         options.body =
             JSON.stringify(body);
     }
-
-
-    console.log(
-        "SFMC Request:",
-        method,
-        url
-    );
 
 
     const response =
@@ -109,37 +173,28 @@ async function sfmcRequest(
                 )
                 : {};
 
-    } catch {
+    }
+
+    catch {
 
         responseData = {
 
             raw:
                 responseText
+
         };
     }
 
 
-    console.log(
-        "SFMC Response Status:",
-        response.status
-    );
-
-
     if (!response.ok) {
-
-        console.error(
-            "SFMC API Error:",
-            responseData
-        );
-
 
         throw new Error(
 
             `SFMC API ${response.status}: ` +
-
             `${JSON.stringify(
                 responseData
             )}`
+
         );
     }
 
@@ -149,132 +204,18 @@ async function sfmcRequest(
 
 
 // =========================================================
-// GET VALUE FROM SFMC RECORD
+// NORMALIZE CONSENT RESPONSE
 // =========================================================
 //
-// SFMC API can return Data Extension fields with
-// lowercase field names.
-//
-// Example:
+// SFMC may return field names with different casing:
 //
 // smsoptin
-// mobilenumber
-// optindate
-//
-// This helper supports both:
-//
 // SMSOptIn
-// smsoptin
 //
-// =========================================================
-
-function getField(
-    record,
-    fieldName,
-    defaultValue = null
-) {
-
-    if (!record) {
-        return defaultValue;
-    }
-
-
-    // Exact field name
-    if (
-        Object.prototype.hasOwnProperty.call(
-            record,
-            fieldName
-        )
-    ) {
-
-        return record[fieldName];
-    }
-
-
-    // Lowercase field name
-    const lowerField =
-        fieldName.toLowerCase();
-
-
-    if (
-        Object.prototype.hasOwnProperty.call(
-            record,
-            lowerField
-        )
-    ) {
-
-        return record[lowerField];
-    }
-
-
-    // Case-insensitive search
-    const actualKey =
-        Object.keys(record)
-            .find(
-                key =>
-                    key.toLowerCase() ===
-                    lowerField
-            );
-
-
-    if (actualKey) {
-
-        return record[actualKey];
-    }
-
-
-    return defaultValue;
-}
-
-
-// =========================================================
-// CONVERT VALUE TO BOOLEAN
-// =========================================================
-
-function toBoolean(value) {
-
-    if (
-        value === true ||
-        value === 1
-    ) {
-
-        return true;
-    }
-
-
-    if (
-        value === false ||
-        value === 0 ||
-        value === null ||
-        value === undefined
-    ) {
-
-        return false;
-    }
-
-
-    return (
-        String(value)
-            .trim()
-            .toLowerCase() ===
-        "true"
-    );
-}
-
-
-// =========================================================
-// NORMALIZE CONSENT RECORD
-// =========================================================
-//
-// Converts SFMC response:
-//
-// smsoptin
 // mobilenumber
-//
-// into a predictable Node.js object:
-//
-// SMSOptIn
 // MobileNumber
+//
+// This function makes our Node.js code consistent.
 //
 // =========================================================
 
@@ -283,89 +224,150 @@ function normalizeConsentRecord(
 ) {
 
     if (!record) {
+
         return null;
     }
+
+
+    const getValue =
+        (
+            camelCaseName,
+            pascalCaseName,
+            lowerCaseName
+        ) => {
+
+            if (
+                record[
+                    camelCaseName
+                ] !== undefined
+            ) {
+
+                return record[
+                    camelCaseName
+                ];
+            }
+
+            if (
+                record[
+                    pascalCaseName
+                ] !== undefined
+            ) {
+
+                return record[
+                    pascalCaseName
+                ];
+            }
+
+            if (
+                record[
+                    lowerCaseName
+                ] !== undefined
+            ) {
+
+                return record[
+                    lowerCaseName
+                ];
+            }
+
+            return "";
+        };
 
 
     return {
 
         ContactKey:
-            getField(
-                record,
+            getValue(
+                "contactKey",
                 "ContactKey",
-                ""
-            ),
+                "contactkey"
+            ) || "",
+
 
         MobileNumber:
-            getField(
-                record,
+            getValue(
+                "mobileNumber",
                 "MobileNumber",
-                ""
-            ),
+                "mobilenumber"
+            ) || "",
+
 
         SMSOptIn:
             toBoolean(
-                getField(
-                    record,
+                getValue(
+                    "smsOptIn",
                     "SMSOptIn",
-                    false
+                    "smsoptin"
                 )
             ),
 
+
         OptInDate:
-            getField(
-                record,
+            getValue(
+                "optInDate",
                 "OptInDate",
-                null
-            ),
+                "optindate"
+            ) || "",
+
 
         OptOutDate:
-            getField(
-                record,
+            getValue(
+                "optOutDate",
                 "OptOutDate",
-                null
-            ),
+                "optoutdate"
+            ) || "",
+
 
         OptInSource:
-            getField(
-                record,
+            getValue(
+                "optInSource",
                 "OptInSource",
-                ""
-            ),
+                "optinsource"
+            ) || "",
+
 
         OptOutSource:
-            getField(
-                record,
+            getValue(
+                "optOutSource",
                 "OptOutSource",
-                ""
-            ),
+                "optoutsource"
+            ) || "",
+
 
         ConsentVersion:
-            getField(
-                record,
+            getValue(
+                "consentVersion",
                 "ConsentVersion",
-                ""
-            ),
+                "consentversion"
+            ) || "",
+
 
         LastUpdated:
-            getField(
-                record,
+            getValue(
+                "lastUpdated",
                 "LastUpdated",
-                null
-            ),
+                "lastupdated"
+            ) || "",
+
 
         TwilioOptOutStatus:
-            getField(
-                record,
+            getValue(
+                "twilioOptOutStatus",
                 "TwilioOptOutStatus",
-                ""
-            )
+                "twiliooptoutstatus"
+            ) || ""
+
     };
 }
 
 
 // =========================================================
 // GET CONSENT BY CONTACT KEY
+// =========================================================
+//
+// Used by Journey Builder.
+//
+// ContactKey = Salesforce Contact/Lead ID.
+//
 // =========================================================
 
 async function getConsent(
@@ -416,7 +418,7 @@ async function getConsent(
 
 
     console.log(
-        "Consent lookup by ContactKey:",
+        "SFMC ContactKey consent lookup:",
         contactKey
     );
 
@@ -436,11 +438,6 @@ async function getConsent(
         result.items.length === 0
     ) {
 
-        console.log(
-            "No consent record found for ContactKey:",
-            contactKey
-        );
-
         return null;
     }
 
@@ -449,38 +446,9 @@ async function getConsent(
         result.items[0];
 
 
-    const record =
-        item.values ||
-        item;
-
-
-    console.log(
-        "Raw SFMC consent record:",
-        JSON.stringify(
-            record,
-            null,
-            2
-        )
+    return normalizeConsentRecord(
+        item.values || item
     );
-
-
-    const normalized =
-        normalizeConsentRecord(
-            record
-        );
-
-
-    console.log(
-        "Normalized consent record:",
-        JSON.stringify(
-            normalized,
-            null,
-            2
-        )
-    );
-
-
-    return normalized;
 }
 
 
@@ -488,19 +456,13 @@ async function getConsent(
 // GET CONSENT BY MOBILE NUMBER
 // =========================================================
 //
-// Your DE stores:
+// This is the main function used by Twilio.
 //
+// Twilio:
+// +916377783635
+//
+// SFMC:
 // 916377783635
-//
-// This function therefore removes:
-//
-// +
-// spaces
-// -
-// ()
-// .
-//
-// before searching.
 //
 // =========================================================
 
@@ -508,7 +470,13 @@ async function getConsentByMobile(
     mobileNumber
 ) {
 
-    if (!mobileNumber) {
+    const cleanNumber =
+        normalizeMobileNumber(
+            mobileNumber
+        );
+
+
+    if (!cleanNumber) {
 
         throw new Error(
             "MobileNumber is required for consent lookup"
@@ -522,51 +490,51 @@ async function getConsentByMobile(
         );
 
 
-    const encodedDEKey =
-        encodeURIComponent(
-            deKey
+    const escapedMobileNumber =
+        cleanNumber.replace(
+            /'/g,
+            "''"
         );
-
-
-    // -----------------------------------------------------
-    // Clean mobile number
-    // -----------------------------------------------------
-
-    const cleanMobile =
-        String(mobileNumber)
-            .replace(
-                /\D/g,
-                ""
-            );
-
-
-    if (!cleanMobile) {
-
-        throw new Error(
-            "Invalid MobileNumber"
-        );
-    }
-
-
-    console.log(
-        "Consent mobile lookup:",
-        cleanMobile
-    );
 
 
     const filter =
-        `MobileNumber eq '${cleanMobile}'`;
+        `MobileNumber eq '${escapedMobileNumber}'`;
 
 
     const url =
         `${getRestBaseUrl()}` +
         `data/v1/customobjectdata/key/` +
-        `${encodedDEKey}` +
+        `${encodeURIComponent(
+            deKey
+        )}` +
         `/rowset` +
         `?$filter=` +
         `${encodeURIComponent(
             filter
         )}`;
+
+
+    console.log(
+        "================================================"
+    );
+
+    console.log(
+        "SFMC MOBILE CONSENT LOOKUP"
+    );
+
+    console.log(
+        "Original:",
+        mobileNumber
+    );
+
+    console.log(
+        "SFMC MobileNumber:",
+        cleanNumber
+    );
+
+    console.log(
+        "================================================"
+    );
 
 
     const result =
@@ -585,8 +553,8 @@ async function getConsentByMobile(
     ) {
 
         console.log(
-            "No consent record found for mobile:",
-            cleanMobile
+            "No consent record found for:",
+            cleanNumber
         );
 
         return null;
@@ -598,12 +566,13 @@ async function getConsentByMobile(
 
 
     const record =
-        item.values ||
-        item;
+        normalizeConsentRecord(
+            item.values || item
+        );
 
 
     console.log(
-        "Raw mobile consent record:",
+        "Consent record found:",
         JSON.stringify(
             record,
             null,
@@ -612,32 +581,43 @@ async function getConsentByMobile(
     );
 
 
-    return normalizeConsentRecord(
-        record
-    );
+    return record;
 }
 
 
 // =========================================================
-// UPSERT CONSENT RECORD
+// UPSERT CONSENT BY MOBILE NUMBER
+// =========================================================
+//
+// IMPORTANT:
+//
+// MobileNumber must be configured as a Primary Key
+// in the SFMC Consent DE.
+//
 // =========================================================
 
 async function upsertConsent(
     values
 ) {
 
-    if (!values.ContactKey) {
-
-        throw new Error(
-            "ContactKey is required for consent upsert"
-        );
-    }
-
-
     const deKey =
         requireEnv(
             "SFMC_CONSENT_DE_KEY"
         );
+
+
+    const mobileNumber =
+        normalizeMobileNumber(
+            values.MobileNumber
+        );
+
+
+    if (!mobileNumber) {
+
+        throw new Error(
+            "MobileNumber is required for consent upsert"
+        );
+    }
 
 
     const url =
@@ -649,103 +629,94 @@ async function upsertConsent(
         `/rowset`;
 
 
-    // -----------------------------------------------------
-    // Normalize mobile
-    // -----------------------------------------------------
-
-    const mobileNumber =
-        values.MobileNumber
-            ? String(
-                values.MobileNumber
-            ).replace(
-                /\D/g,
-                ""
-            )
-            : "";
-
-
-    // -----------------------------------------------------
-    // Normalize Boolean
-    // -----------------------------------------------------
-
-    const smsOptIn =
-        toBoolean(
-            values.SMSOptIn
-        );
-
-
-    // -----------------------------------------------------
-    // Current date
-    // -----------------------------------------------------
-
-    const now =
-        new Date().toISOString();
-
-
     const payload = [
 
         {
 
             keys: {
 
-                ContactKey:
-                    String(
-                        values.ContactKey
-                    )
+                MobileNumber:
+                    mobileNumber
+
             },
 
-            values: {
 
-                ContactKey:
-                    String(
-                        values.ContactKey
-                    ),
+            values: {
 
                 MobileNumber:
                     mobileNumber,
 
+
+                ContactKey:
+                    values.ContactKey ||
+                    "",
+
+
                 SMSOptIn:
-                    smsOptIn,
+                    toBoolean(
+                        values.SMSOptIn
+                    ),
+
 
                 OptInDate:
                     values.OptInDate ||
                     null,
 
+
                 OptOutDate:
                     values.OptOutDate ||
                     null,
+
 
                 OptInSource:
                     values.OptInSource ||
                     "",
 
+
                 OptOutSource:
                     values.OptOutSource ||
                     "",
+
 
                 ConsentVersion:
                     values.ConsentVersion ||
                     "",
 
+
                 LastUpdated:
                     values.LastUpdated ||
-                    now,
+                    new Date().toISOString(),
+
 
                 TwilioOptOutStatus:
                     values.TwilioOptOutStatus ||
                     ""
+
             }
+
         }
+
     ];
 
 
     console.log(
-        "Consent upsert payload:",
+        "================================================"
+    );
+
+    console.log(
+        "SFMC CONSENT UPSERT"
+    );
+
+    console.log(
         JSON.stringify(
             payload,
             null,
             2
         )
+    );
+
+    console.log(
+        "================================================"
     );
 
 
@@ -758,25 +729,20 @@ async function upsertConsent(
 
 
 // =========================================================
-// OPT OUT
+// OPT-OUT
 // =========================================================
 //
-// Trigger:
+// IMPORTANT:
 //
-// Customer sends STOP
+// MobileNumber is the ONLY required identifier.
 //
-// Result:
-//
-// SMSOptIn = false
-// OptOutDate = NOW
-// OptOutSource = Twilio
-// TwilioOptOutStatus = OptedOut
+// ContactKey is optional and is preserved if available.
 //
 // =========================================================
 
 async function optOut({
 
-    contactKey,
+    contactKey = "",
 
     mobileNumber,
 
@@ -786,125 +752,114 @@ async function optOut({
 
 }) {
 
-    if (!contactKey) {
+    const cleanNumber =
+        normalizeMobileNumber(
+            mobileNumber
+        );
+
+
+    if (!cleanNumber) {
 
         throw new Error(
-            "ContactKey is required for opt-out"
+            "MobileNumber is required for opt-out"
         );
     }
 
 
-    // -----------------------------------------------------
-    // Get existing record
-    // -----------------------------------------------------
+    // =====================================================
+    // FIND EXISTING RECORD BY MOBILE
+    // =====================================================
 
     const existing =
-        await getConsent(
-            contactKey
+        await getConsentByMobile(
+            cleanNumber
         );
+
+
+    if (!existing) {
+
+        throw new Error(
+            `No consent record found for MobileNumber ${cleanNumber}`
+        );
+    }
 
 
     const now =
         new Date().toISOString();
 
 
-    // -----------------------------------------------------
-    // Existing values are already normalized.
-    // -----------------------------------------------------
+    // =====================================================
+    // PRESERVE EXISTING CONTACT KEY
+    // =====================================================
 
-    const existingMobile =
-        existing?.MobileNumber ||
+    const existingContactKey =
+        existing.ContactKey ||
         "";
 
 
-    const existingOptInDate =
-        existing?.OptInDate ||
-        null;
-
-
-    const existingOptInSource =
-        existing?.OptInSource ||
+    const finalContactKey =
+        contactKey ||
+        existingContactKey ||
         "";
 
 
-    const existingConsentVersion =
-        existing?.ConsentVersion ||
-        consentVersion ||
-        "";
+    // =====================================================
+    // UPDATE CONSENT
+    // =====================================================
 
+    return upsertConsent({
 
-    // -----------------------------------------------------
-    // Upsert opted-out record
-    // -----------------------------------------------------
+        ContactKey:
+            finalContactKey,
 
-    const result =
-        await upsertConsent({
+        MobileNumber:
+            cleanNumber,
 
-            ContactKey:
-                contactKey,
+        SMSOptIn:
+            false,
 
-            MobileNumber:
-                mobileNumber ||
-                existingMobile,
+        OptInDate:
+            existing.OptInDate ||
+            null,
 
-            SMSOptIn:
-                false,
+        OptOutDate:
+            now,
 
-            OptInDate:
-                existingOptInDate,
+        OptInSource:
+            existing.OptInSource ||
+            "",
 
-            OptOutDate:
-                now,
+        OptOutSource:
+            source,
 
-            OptInSource:
-                existingOptInSource,
+        ConsentVersion:
+            existing.ConsentVersion ||
+            consentVersion,
 
-            OptOutSource:
-                source,
+        LastUpdated:
+            now,
 
-            ConsentVersion:
-                existingConsentVersion,
+        TwilioOptOutStatus:
+            "OptedOut"
 
-            LastUpdated:
-                now,
-
-            TwilioOptOutStatus:
-                "OptedOut"
-        });
-
-
-    console.log(
-        "Contact opted out:",
-        contactKey
-    );
-
-
-    return result;
+    });
 }
 
 
 // =========================================================
-// OPT IN
+// OPT-IN
 // =========================================================
 //
-// Trigger:
+// MobileNumber is the primary operational identifier.
 //
-// Preference Center / API
-//
-// Result:
-//
-// SMSOptIn = true
-// OptInDate = NOW
-// OptOutDate = NULL
-// OptInSource = source
-// OptOutSource = blank
-// TwilioOptOutStatus = Active
+// ContactKey is optional. If supplied, it is stored.
+// Otherwise existing ContactKey is preserved.
 //
 // =========================================================
 
 async function optIn({
 
-    contactKey,
+    contactKey = "",
 
     mobileNumber,
 
@@ -914,21 +869,27 @@ async function optIn({
 
 }) {
 
-    if (!contactKey) {
+    const cleanNumber =
+        normalizeMobileNumber(
+            mobileNumber
+        );
+
+
+    if (!cleanNumber) {
 
         throw new Error(
-            "ContactKey is required for opt-in"
+            "MobileNumber is required for opt-in"
         );
     }
 
 
-    // -----------------------------------------------------
-    // Get existing record
-    // -----------------------------------------------------
+    // =====================================================
+    // FIND EXISTING RECORD
+    // =====================================================
 
     const existing =
-        await getConsent(
-            contactKey
+        await getConsentByMobile(
+            cleanNumber
         );
 
 
@@ -936,63 +897,63 @@ async function optIn({
         new Date().toISOString();
 
 
-    const existingMobile =
-        existing?.MobileNumber ||
+    // =====================================================
+    // PRESERVE EXISTING CONTACT KEY
+    // =====================================================
+
+    const existingContactKey =
+        existing?.ContactKey ||
         "";
 
 
-    // -----------------------------------------------------
-    // Upsert opted-in record
-    // -----------------------------------------------------
-
-    const result =
-        await upsertConsent({
-
-            ContactKey:
-                contactKey,
-
-            MobileNumber:
-                mobileNumber ||
-                existingMobile,
-
-            SMSOptIn:
-                true,
-
-            OptInDate:
-                now,
-
-            OptOutDate:
-                null,
-
-            OptInSource:
-                source,
-
-            OptOutSource:
-                "",
-
-            ConsentVersion:
-                consentVersion,
-
-            LastUpdated:
-                now,
-
-            TwilioOptOutStatus:
-                "Active"
-        });
+    const finalContactKey =
+        contactKey ||
+        existingContactKey ||
+        "";
 
 
-    console.log(
-        "Contact opted in:",
-        contactKey
-    );
+    // =====================================================
+    // UPDATE CONSENT
+    // =====================================================
 
+    return upsertConsent({
 
-    return result;
+        ContactKey:
+            finalContactKey,
+
+        MobileNumber:
+            cleanNumber,
+
+        SMSOptIn:
+            true,
+
+        OptInDate:
+            now,
+
+        OptOutDate:
+            null,
+
+        OptInSource:
+            source,
+
+        OptOutSource:
+            "",
+
+        ConsentVersion:
+            consentVersion,
+
+        LastUpdated:
+            now,
+
+        TwilioOptOutStatus:
+            "Active"
+
+    });
 }
 
 
 // =========================================================
-// MODULE EXPORTS
+// EXPORTS
 // =========================================================
 
 module.exports = {
