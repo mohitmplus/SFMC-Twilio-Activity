@@ -1,59 +1,249 @@
 const connection = new Postmonger.Session();
+
 let payload = {};
-let eventDefinitionKey = ""; // We will store the dynamic ID here
 
-$(document).ready(function() {
-    connection.trigger('ready');
-    // Ask Journey Builder for the current Journey's blueprint
-    connection.trigger('requestInteraction'); 
+let eventDefinitionKey = "";
+
+
+/*
+|--------------------------------------------------------------------------
+| INITIALIZE
+|--------------------------------------------------------------------------
+*/
+
+$(document).ready(function () {
+
+    connection.trigger("ready");
+
+    connection.trigger(
+        "requestInteraction"
+    );
 });
 
-// 1. Catch the Journey blueprint and extract the Entry Source ID
-connection.on('requestedInteraction', function(interaction) {
-    console.log("DEBUG: Journey Blueprint received", interaction);
-    
-    // Safety check to ensure there is actually an entry source configured
-    if (interaction.triggers && interaction.triggers.length > 0) {
-        eventDefinitionKey = interaction.triggers[0].metaData.eventDefinitionKey;
-        console.log("DEBUG: The dynamic Event Key is: " + eventDefinitionKey);
-    }
-});
 
-// 2. Load existing data if they are editing the activity
-connection.on('initActivity', function(data) {
-    if (data) {
-        payload = data;
-    }
+/*
+|--------------------------------------------------------------------------
+| GET JOURNEY BLUEPRINT
+|--------------------------------------------------------------------------
+*/
 
-    let hasInArgs = false;
-    if (payload.arguments && payload.arguments.execute && payload.arguments.execute.inArguments && payload.arguments.execute.inArguments.length > 0) {
-        hasInArgs = true;
-    }
+connection.on(
+    "requestedInteraction",
+    function (interaction) {
 
-    if (hasInArgs) {
-        const existingMessage = payload.arguments.execute.inArguments[0].message;
-        $('#smsMessage').val(existingMessage);
-    }
-});
+        console.log(
+            "Journey Blueprint received:",
+            interaction
+        );
 
-// 3. When the user clicks "Done"
-connection.on('clickedNext', function() {
-    const userMessage = $('#smsMessage').val();
-    
-    // Construct the dynamic binding string
-    // It will look like this: {{Event.ContactEvent-abc123def456.Phone}}
-    const dynamicPhoneBinding = "{{Event." + eventDefinitionKey + ".Phone}}";
-    
-    payload['arguments'] = payload['arguments'] || {};
-    payload['arguments'].execute = payload['arguments'].execute || {};
-    
-    payload['arguments'].execute.inArguments = [{
-        "message": userMessage,
-        "phoneNumber": dynamicPhoneBinding 
-    }];
-    
-    payload['metaData'] = payload['metaData'] || {};
-    payload['metaData'].isConfigured = true;
-    
-    connection.trigger('updateActivity', payload);
-});
+
+        if (
+            interaction &&
+            interaction.triggers &&
+            interaction.triggers.length > 0
+        ) {
+
+            const trigger =
+                interaction.triggers[0];
+
+
+            if (
+                trigger.metaData &&
+                trigger.metaData.eventDefinitionKey
+            ) {
+
+                eventDefinitionKey =
+                    trigger
+                        .metaData
+                        .eventDefinitionKey;
+
+
+                console.log(
+                    "Event Definition Key:",
+                    eventDefinitionKey
+                );
+            }
+        }
+    }
+);
+
+
+/*
+|--------------------------------------------------------------------------
+| INITIALIZE EXISTING ACTIVITY
+|--------------------------------------------------------------------------
+*/
+
+connection.on(
+    "initActivity",
+    function (data) {
+
+        console.log(
+            "initActivity:",
+            data
+        );
+
+
+        if (data) {
+            payload = data;
+        }
+
+
+        try {
+
+            const inArguments =
+                payload
+                    ?.arguments
+                    ?.execute
+                    ?.inArguments;
+
+
+            if (
+                Array.isArray(inArguments)
+            ) {
+
+                const messageArg =
+                    inArguments.find(
+                        item =>
+                            item &&
+                            Object.prototype.hasOwnProperty
+                                .call(
+                                    item,
+                                    "message"
+                                )
+                    );
+
+
+                if (
+                    messageArg &&
+                    messageArg.message !== undefined
+                ) {
+
+                    $("#smsMessage")
+                        .val(
+                            messageArg.message
+                        )
+                        .trigger("input");
+                }
+            }
+
+        } catch (error) {
+
+            console.error(
+                "Unable to load existing activity:",
+                error
+            );
+        }
+    }
+);
+
+
+/*
+|--------------------------------------------------------------------------
+| NEXT / DONE
+|--------------------------------------------------------------------------
+*/
+
+connection.on(
+    "clickedNext",
+    function () {
+
+        const userMessage =
+            $("#smsMessage")
+                .val()
+                .trim();
+
+
+        if (!userMessage) {
+
+            alert(
+                "Please enter an SMS message."
+            );
+
+            return;
+        }
+
+
+        /*
+         * Phone binding
+         *
+         * Existing dynamic binding is retained.
+         */
+
+        let dynamicPhoneBinding =
+            "{{Context.DefaultMobileNumber}}";
+
+
+        /*
+         * If an Event Definition Key exists,
+         * use the Journey Event phone field.
+         */
+
+        if (
+            eventDefinitionKey
+        ) {
+
+            dynamicPhoneBinding =
+                "{{Event." +
+                eventDefinitionKey +
+                ".Phone}}";
+        }
+
+
+        /*
+         * ContactKey
+         *
+         * Journey Builder resolves this at runtime.
+         */
+
+        const contactKeyBinding =
+            "{{Contact.Key}}";
+
+
+        payload.arguments =
+            payload.arguments || {};
+
+
+        payload.arguments.execute =
+            payload.arguments.execute || {};
+
+
+        payload.arguments.execute.inArguments = [
+
+            {
+                contactKey:
+                    contactKeyBinding
+            },
+
+            {
+                phoneNumber:
+                    dynamicPhoneBinding
+            },
+
+            {
+                message:
+                    userMessage
+            }
+        ];
+
+
+        payload.metaData =
+            payload.metaData || {};
+
+
+        payload.metaData.isConfigured =
+            true;
+
+
+        console.log(
+            "Activity payload:",
+            payload
+        );
+
+
+        connection.trigger(
+            "updateActivity",
+            payload
+        );
+    }
+);

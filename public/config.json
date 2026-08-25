@@ -1,43 +1,74 @@
 {
-    "workflowApiVersion": "1.1",
-    "metaData": {
-        "icon": "https://sfmc-twilio-activity.onrender.com/icon.png",
-        "category": "message"
-    },
-    "type": "REST",
-    "lang": {
-        "en-US": {
-            "name": "Twilio SMS",
-            "description": "Send a custom SMS via Twilio"
-        }
-    },
-    "arguments": {
-        "execute": {
-            "inArguments": [
-                { "phoneNumber": "{{Context.DefaultMobileNumber}}" },
-                { "message": "" }
-            ],
-            "outArguments": [],
-            "url": "https://sfmc-twilio-activity.onrender.com/execute",
-            "verb": "POST",
-            "body": "",
-            "header": "",
-            "format": "json",
-            "useJwt": true,
-            "timeout": 10000
-        }
-    },
-    "configurationArguments": {
-        "save": { "url": "https://sfmc-twilio-activity.onrender.com/save" },
-        "publish": { "url": "https://sfmc-twilio-activity.onrender.com/publish" },
-        "validate": { "url": "https://sfmc-twilio-activity.onrender.com/validate" }
-    },
-   "userInterfaces": {
-    "configModal": {
-        "url": "https://sfmc-twilio-activity.onrender.com/index.html",
-        "height": 780,
-        "width": 1080,
-        "fullscreen": false
+  "workflowApiVersion": "1.1",
+
+  "metaData": {
+    "icon": "https://sfmc-twilio-activity.onrender.com/icon.png",
+    "category": "message"
+  },
+
+  "type": "REST",
+
+  "lang": {
+    "en-US": {
+      "name": "Twilio SMS",
+      "description": "Send SMS through Twilio with SFMC consent validation"
     }
-}
+  },
+
+  "arguments": {
+    "execute": {
+      "inArguments": [
+        {
+          "contactKey": "{{Contact.Key}}"
+        },
+        {
+          "phoneNumber": "{{Context.DefaultMobileNumber}}"
+        },
+        {
+          "message": ""
+        }
+      ],
+
+      "outArguments": [],
+
+      "url": "https://sfmc-twilio-activity.onrender.com/execute",
+
+      "verb": "POST",
+
+      "body": "",
+
+      "header": "",
+
+      "format": "json",
+
+      "useJwt": true,
+
+      "timeout": 10000
+    }
+  },
+
+  "configurationArguments": {
+
+    "save": {
+      "url": "https://sfmc-twilio-activity.onrender.com/save"
+    },
+
+    "publish": {
+      "url": "https://sfmc-twilio-activity.onrender.com/publish"
+    },
+
+    "validate": {
+      "url": "https://sfmc-twilio-activity.onrender.com/validate"
+    }
+  },
+
+  "userInterfaces": {
+
+    "configModal": {
+      "url": "https://sfmc-twilio-activity.onrender.com/index.html",
+      "height": 300,
+      "width": 500,
+      "fullscreen": false
+    }
+  }
 }
