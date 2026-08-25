@@ -1,10 +1,8 @@
-const connection =
-    new Postmonger.Session();
-
+const connection = new Postmonger.Session();
 
 let payload = {};
-
 let eventDefinitionKey = "";
+let journeyEventFields = [];
 
 
 // =========================================================
@@ -13,19 +11,17 @@ let eventDefinitionKey = "";
 
 $(document).ready(function () {
 
-    connection.trigger(
-        "ready"
-    );
+    console.log("Custom Activity loading...");
 
-    connection.trigger(
-        "requestInteraction"
-    );
+    connection.trigger("ready");
+
+    connection.trigger("requestInteraction");
 
 });
 
 
 // =========================================================
-// JOURNEY
+// JOURNEY BLUEPRINT
 // =========================================================
 
 connection.on(
@@ -37,49 +33,59 @@ connection.on(
             interaction
         );
 
-
         try {
 
             if (
                 interaction &&
                 interaction.triggers &&
-                interaction.triggers.length
+                interaction.triggers.length > 0
             ) {
 
                 const trigger =
                     interaction.triggers[0];
 
-
                 eventDefinitionKey =
-                    trigger
-                        ?.metaData
-                        ?.eventDefinitionKey ||
+                    trigger?.metaData?.eventDefinitionKey ||
+                    trigger?.metaData?.eventDefinitionId ||
                     "";
-
 
                 console.log(
                     "Event Definition Key:",
                     eventDefinitionKey
                 );
 
-
-                if (
-                    eventDefinitionKey
-                ) {
+                if (eventDefinitionKey) {
 
                     await loadEventFields();
 
                 }
+                else {
+
+                    showFieldError(
+                        "Unable to determine Journey Event Definition Key."
+                    );
+
+                }
+
+            }
+            else {
+
+                showFieldError(
+                    "Unable to determine Journey Event."
+                );
 
             }
 
         }
-
         catch (error) {
 
             console.error(
                 "Unable to initialize event fields:",
                 error
+            );
+
+            showFieldError(
+                error.message
             );
 
         }
@@ -101,14 +107,11 @@ connection.on(
             data
         );
 
-
         if (data) {
 
-            payload =
-                data;
+            payload = data;
 
         }
-
 
         try {
 
@@ -118,10 +121,23 @@ connection.on(
                     ?.execute
                     ?.inArguments;
 
-
             if (
                 Array.isArray(args)
             ) {
+
+                console.log(
+                    "Existing InArguments:",
+                    JSON.stringify(
+                        args,
+                        null,
+                        2
+                    )
+                );
+
+
+                // =================================================
+                // MESSAGE
+                // =================================================
 
                 const messageArg =
                     args.find(
@@ -135,18 +151,58 @@ connection.on(
                                 )
                     );
 
-
-                if (
-                    messageArg
-                ) {
+                if (messageArg) {
 
                     $("#smsMessage")
                         .val(
-                            messageArg.message ||
-                            ""
-                        )
-                        .trigger(
-                            "input"
+                            messageArg.message || ""
+                        );
+
+                }
+
+
+                // =================================================
+                // PHONE FIELD
+                // =================================================
+
+                const phoneArg =
+                    args.find(
+                        item =>
+                            item &&
+                            (
+                                Object.prototype
+                                    .hasOwnProperty
+                                    .call(
+                                        item,
+                                        "phoneNumber"
+                                    ) ||
+                                Object.prototype
+                                    .hasOwnProperty
+                                    .call(
+                                        item,
+                                        "mobileNumber"
+                                    )
+                            )
+                    );
+
+
+                if (phoneArg) {
+
+                    const savedPhoneBinding =
+                        phoneArg.phoneNumber ||
+                        phoneArg.mobileNumber ||
+                        "";
+
+                    console.log(
+                        "Saved phone binding:",
+                        savedPhoneBinding
+                    );
+
+                    $("#phoneField")
+                        .val(
+                            extractFieldName(
+                                savedPhoneBinding
+                            )
                         );
 
                 }
@@ -154,7 +210,6 @@ connection.on(
             }
 
         }
-
         catch (error) {
 
             console.error(
@@ -189,26 +244,72 @@ async function loadEventFields() {
 
     try {
 
-        const response =
-            await fetch(
+        if (!eventDefinitionKey) {
 
-                `/event-fields?eventDefinitionKey=${
-                    encodeURIComponent(
-                        eventDefinitionKey
-                    )
-                }`
-
+            throw new Error(
+                "Event Definition Key is not available."
             );
 
+        }
 
-        const data =
-            await response.json();
+
+        const url =
+            `/event-fields?eventDefinitionKey=${encodeURIComponent(
+                eventDefinitionKey
+            )}`;
 
 
         console.log(
-            "Event fields response:",
-            data
+            "Loading Event Fields:",
+            url
         );
+
+
+        const response =
+            await fetch(
+                url,
+                {
+                    method: "GET",
+                    headers: {
+                        "Accept":
+                            "application/json"
+                    }
+                }
+            );
+
+
+        const responseText =
+            await response.text();
+
+
+        console.log(
+            "Event fields HTTP status:",
+            response.status
+        );
+
+        console.log(
+            "Event fields response:",
+            responseText
+        );
+
+
+        let data;
+
+        try {
+
+            data =
+                JSON.parse(
+                    responseText
+                );
+
+        }
+        catch (error) {
+
+            throw new Error(
+                `Invalid response from server. HTTP ${response.status}`
+            );
+
+        }
 
 
         if (
@@ -217,6 +318,7 @@ async function loadEventFields() {
         ) {
 
             throw new Error(
+                data.message ||
                 data.error ||
                 "Unable to retrieve Event fields"
             );
@@ -224,23 +326,35 @@ async function loadEventFields() {
         }
 
 
+        journeyEventFields =
+            Array.isArray(
+                data.fields
+            )
+                ? data.fields
+                : [];
+
+
         window.journeyEventFields =
-            data.fields || [];
+            journeyEventFields;
 
 
-        container.html(
-            ""
+        console.log(
+            "Journey Event Fields:",
+            journeyEventFields
         );
 
 
+        container.html("");
+
+
         if (
-            !window.journeyEventFields.length
+            journeyEventFields.length === 0
         ) {
 
             container.html(
                 `
                 <div class="variable-empty">
-                    No Event fields found.
+                    No Journey Event fields found.
                 </div>
                 `
             );
@@ -250,30 +364,124 @@ async function loadEventFields() {
         }
 
 
+        // =====================================================
+        // PHONE FIELD SELECTOR
+        // =====================================================
+
+        renderPhoneFieldSelector();
+
+
+        // =====================================================
+        // MESSAGE VARIABLE
+        // =====================================================
+
         addVariableRow();
 
 
     }
-
     catch (error) {
 
         console.error(
+            "EVENT FIELD LOAD ERROR:",
             error
         );
 
 
-        container.html(
-            `
-            <div class="variable-error">
-                Unable to load Journey Event fields.<br>
-                ${escapeHtml(
-                    error.message
-                )}
-            </div>
-            `
+        showFieldError(
+            error.message
         );
 
     }
+
+}
+
+
+// =========================================================
+// PHONE FIELD SELECTOR
+// =========================================================
+
+function renderPhoneFieldSelector() {
+
+    const container =
+        $("#phoneFieldContainer");
+
+
+    if (
+        !container.length
+    ) {
+
+        console.warn(
+            "phoneFieldContainer not found in HTML."
+        );
+
+        return;
+
+    }
+
+
+    const fields =
+        journeyEventFields || [];
+
+
+    const options =
+        fields
+            .map(
+                field => {
+
+                    const name =
+                        field.name ||
+                        "";
+
+                    if (!name) {
+
+                        return "";
+
+                    }
+
+                    return `
+                        <option
+                            value="${escapeAttribute(
+                                name
+                            )}"
+                        >
+                            ${escapeHtml(
+                                name
+                            )}
+                        </option>
+                    `;
+
+                }
+            )
+            .join("");
+
+
+    container.html(
+        `
+        <label
+            for="phoneField"
+        >
+            Mobile / Phone Field
+        </label>
+
+        <select
+            id="phoneField"
+            class="phone-field-select"
+        >
+
+            <option value="">
+                Select mobile/phone field
+            </option>
+
+            ${options}
+
+        </select>
+
+        <div class="field-help">
+            Select the Journey Event field containing
+            the recipient mobile number.
+        </div>
+        `
+    );
 
 }
 
@@ -287,7 +495,7 @@ function addVariableRow(
 ) {
 
     const fields =
-        window.journeyEventFields || [];
+        journeyEventFields || [];
 
 
     if (
@@ -314,8 +522,19 @@ function addVariableRow(
             .map(
                 field => {
 
+                    const fieldName =
+                        field.name ||
+                        "";
+
+                    if (!fieldName) {
+
+                        return "";
+
+                    }
+
+
                     const selected =
-                        field.name ===
+                        fieldName ===
                         selectedField
                             ? "selected"
                             : "";
@@ -324,12 +543,12 @@ function addVariableRow(
                     return `
                     <option
                         value="${escapeAttribute(
-                            field.name
+                            fieldName
                         )}"
                         ${selected}
                     >
                         ${escapeHtml(
-                            field.name
+                            fieldName
                         )}
                     </option>
                     `;
@@ -423,21 +642,6 @@ function addVariableRow(
     );
 
 
-    containerAppend(
-        row
-    );
-
-}
-
-
-// =========================================================
-// APPEND VARIABLE
-// =========================================================
-
-function containerAppend(
-    row
-) {
-
     $("#variableFields")
         .append(
             row
@@ -467,6 +671,13 @@ function insertVariable(
     }
 
 
+    if (!field) {
+
+        return;
+
+    }
+
+
     const token =
         `{{Event.${eventDefinitionKey}.${field}}}`;
 
@@ -479,21 +690,29 @@ function insertVariable(
 
     if (!textarea) {
 
+        console.error(
+            "smsMessage textarea not found."
+        );
+
         return;
 
     }
 
 
     const start =
-        textarea.selectionStart;
+        typeof textarea.selectionStart === "number"
+            ? textarea.selectionStart
+            : textarea.value.length;
 
 
     const end =
-        textarea.selectionEnd;
+        typeof textarea.selectionEnd === "number"
+            ? textarea.selectionEnd
+            : textarea.value.length;
 
 
     const current =
-        textarea.value;
+        textarea.value || "";
 
 
     textarea.value =
@@ -526,6 +745,12 @@ function insertVariable(
         )
     );
 
+
+    console.log(
+        "Inserted Journey variable:",
+        token
+    );
+
 }
 
 
@@ -536,6 +761,15 @@ function insertVariable(
 connection.on(
     "clickedNext",
     function () {
+
+        console.log(
+            "Next clicked."
+        );
+
+
+        // =====================================================
+        // MESSAGE
+        // =====================================================
 
         const message =
             $("#smsMessage")
@@ -554,8 +788,65 @@ connection.on(
         }
 
 
+        // =====================================================
+        // PHONE FIELD
+        // =====================================================
+
+        let selectedPhoneField =
+            $("#phoneField")
+                .val();
+
+
+        /*
+         * Fallback:
+         *
+         * If the HTML does not contain #phoneField,
+         * use Phone when available.
+         */
+
+        if (
+            !selectedPhoneField
+        ) {
+
+            const phoneField =
+                journeyEventFields.find(
+                    field =>
+                        String(
+                            field.name || ""
+                        ).toLowerCase() ===
+                        "phone"
+                );
+
+
+            if (phoneField) {
+
+                selectedPhoneField =
+                    phoneField.name;
+
+            }
+
+        }
+
+
+        if (
+            !selectedPhoneField
+        ) {
+
+            alert(
+                "Please select the Mobile / Phone field."
+            );
+
+            return;
+
+        }
+
+
+        // =====================================================
+        // PHONE BINDING
+        // =====================================================
+
         let phoneBinding =
-            "{{Context.DefaultMobileNumber}}";
+            selectedPhoneField;
 
 
         if (
@@ -563,9 +854,36 @@ connection.on(
         ) {
 
             phoneBinding =
-                `{{Event.${eventDefinitionKey}.Phone}}`;
+                `{{Event.${eventDefinitionKey}.${selectedPhoneField}}}`;
 
         }
+
+
+        console.log(
+            "Selected phone field:",
+            selectedPhoneField
+        );
+
+        console.log(
+            "Phone binding:",
+            phoneBinding
+        );
+
+
+        // =====================================================
+        // CONTACT KEY
+        // =====================================================
+
+        const contactKeyBinding =
+            "{{Contact.Key}}";
+
+
+        // =====================================================
+        // PAYLOAD
+        // =====================================================
+
+        payload =
+            payload || {};
 
 
         payload.arguments =
@@ -581,7 +899,7 @@ connection.on(
             {
 
                 contactKey:
-                    "{{Contact.Key}}"
+                    contactKeyBinding
 
             },
 
@@ -610,8 +928,32 @@ connection.on(
             true;
 
 
+        // =====================================================
+        // STORE SELECTED FIELD
+        // =====================================================
+
+        /*
+         * These values are useful for debugging
+         * and restoring the activity.
+         */
+
+        payload.metaData.phoneField =
+            selectedPhoneField;
+
+
+        payload.metaData.eventDefinitionKey =
+            eventDefinitionKey;
+
+
         console.log(
-            "Final Activity Payload:",
+            "================================================"
+        );
+
+        console.log(
+            "FINAL ACTIVITY PAYLOAD"
+        );
+
+        console.log(
             JSON.stringify(
                 payload,
                 null,
@@ -619,6 +961,14 @@ connection.on(
             )
         );
 
+        console.log(
+            "================================================"
+        );
+
+
+        // =====================================================
+        // UPDATE ACTIVITY
+        // =====================================================
 
         connection.trigger(
             "updateActivity",
@@ -630,6 +980,87 @@ connection.on(
 
 
 // =========================================================
+// EXTRACT FIELD NAME
+// =========================================================
+
+function extractFieldName(
+    binding
+) {
+
+    if (!binding) {
+
+        return "";
+
+    }
+
+
+    const value =
+        String(
+            binding
+        ).trim();
+
+
+    /*
+     * Example:
+     *
+     * {{Event.APIEvent-xxx.Phone}}
+     *
+     * returns:
+     *
+     * Phone
+     */
+
+    const match =
+        value.match(
+            /^\{\{Event\.[^.]+\.(.+)\}\}$/
+        );
+
+
+    if (
+        match &&
+        match[1]
+    ) {
+
+        return match[1];
+
+    }
+
+
+    return "";
+
+}
+
+
+// =========================================================
+// ERROR
+// =========================================================
+
+function showFieldError(
+    message
+) {
+
+    $("#variableFields")
+        .html(
+            `
+            <div class="variable-error">
+
+                Unable to load Journey Event fields.
+
+                <br><br>
+
+                ${escapeHtml(
+                    message ||
+                    "Unknown error"
+                )}
+
+            </div>
+            `
+        );
+
+}
+
+
+// =========================================================
 // HTML ESCAPE
 // =========================================================
 
@@ -638,7 +1069,7 @@ function escapeHtml(
 ) {
 
     return String(
-        value || ""
+        value ?? ""
     )
         .replace(
             /&/g,
