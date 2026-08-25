@@ -5,7 +5,6 @@ const jwt = require("jsonwebtoken");
 const twilio = require("twilio");
 const crypto = require("crypto");
 const path = require("path");
-const https = require("https");
 
 const {
     getConsentByMobile,
@@ -18,12 +17,13 @@ const {
 } = require("./services/twilioService");
 
 const {
-    getAccessToken
+    getAccessToken,
+    getAuthDetails
 } = require("./services/sfmcAuth");
 
 
 // =========================================================
-// EXPRESS APPLICATION
+// EXPRESS
 // =========================================================
 
 const app = express();
@@ -53,7 +53,7 @@ const WEBHOOK_API_KEY =
 
 
 // =========================================================
-// REQUIRED ENVIRONMENT VARIABLES
+// ENV CHECK
 // =========================================================
 
 const requiredEnvironmentVariables = [
@@ -87,12 +87,14 @@ for (
         console.warn(
             `WARNING: ${variable} is not configured`
         );
+
     }
+
 }
 
 
 // =========================================================
-// STATIC FILES
+// STATIC
 // =========================================================
 
 app.use(
@@ -106,7 +108,7 @@ app.use(
 
 
 // =========================================================
-// JSON REQUESTS
+// JSON
 // =========================================================
 
 app.use(
@@ -117,7 +119,7 @@ app.use(
 
 
 // =========================================================
-// URL ENCODED REQUESTS
+// URL ENCODED
 // =========================================================
 
 app.use(
@@ -128,7 +130,7 @@ app.use(
 
 
 // =========================================================
-// HEALTH CHECK
+// HEALTH
 // =========================================================
 
 app.get(
@@ -149,6 +151,7 @@ app.get(
                     new Date().toISOString()
 
             });
+
     }
 );
 
@@ -168,12 +171,13 @@ app.get(
                 "index.html"
             )
         );
+
     }
 );
 
 
 // =========================================================
-// JOURNEY BUILDER - SAVE
+// SAVE
 // =========================================================
 
 app.post(
@@ -181,11 +185,7 @@ app.post(
     (req, res) => {
 
         console.log(
-            "================================================"
-        );
-
-        console.log(
-            "JOURNEY BUILDER SAVE REQUEST"
+            "JOURNEY BUILDER SAVE"
         );
 
         console.log(
@@ -196,19 +196,16 @@ app.post(
             )
         );
 
-        console.log(
-            "================================================"
-        );
-
         return res
             .status(200)
             .json({});
+
     }
 );
 
 
 // =========================================================
-// JOURNEY BUILDER - PUBLISH
+// PUBLISH
 // =========================================================
 
 app.post(
@@ -216,11 +213,7 @@ app.post(
     (req, res) => {
 
         console.log(
-            "================================================"
-        );
-
-        console.log(
-            "JOURNEY BUILDER PUBLISH REQUEST"
+            "JOURNEY BUILDER PUBLISH"
         );
 
         console.log(
@@ -231,19 +224,16 @@ app.post(
             )
         );
 
-        console.log(
-            "================================================"
-        );
-
         return res
             .status(200)
             .json({});
+
     }
 );
 
 
 // =========================================================
-// JOURNEY BUILDER - VALIDATE
+// VALIDATE
 // =========================================================
 
 app.post(
@@ -251,11 +241,7 @@ app.post(
     (req, res) => {
 
         console.log(
-            "================================================"
-        );
-
-        console.log(
-            "JOURNEY BUILDER VALIDATE REQUEST"
+            "JOURNEY BUILDER VALIDATE"
         );
 
         console.log(
@@ -266,24 +252,19 @@ app.post(
             )
         );
 
-        console.log(
-            "================================================"
-        );
-
         return res
             .status(200)
             .json({});
+
     }
 );
 
 
 // =========================================================
-// NORMALIZE PHONE NUMBER
+// PHONE NORMALIZATION
 // =========================================================
 
-function normalizePhone(
-    phone
-) {
+function normalizePhone(phone) {
 
     if (
         phone === undefined ||
@@ -291,48 +272,50 @@ function normalizePhone(
     ) {
 
         return null;
+
     }
 
 
-    let normalized =
+    let value =
         String(phone)
             .trim();
 
 
-    if (!normalized) {
+    if (!value) {
 
         return null;
+
     }
 
 
-    normalized =
-        normalized.replace(
+    value =
+        value.replace(
             /[\s\-().]/g,
             ""
         );
 
 
     if (
-        !normalized.startsWith("+")
+        !value.startsWith("+")
     ) {
 
-        normalized =
+        value =
             "+" +
-            normalized;
+            value;
+
     }
 
 
-    return normalized;
+    return value;
+
 }
 
 
 // =========================================================
-// CLEAN MOBILE NUMBER FOR SFMC
+// SFMC MOBILE FORMAT
 // =========================================================
 
-function cleanMobileForSFMC(
-    phone
-) {
+function cleanMobileForSFMC(phone) {
 
     if (
         phone === undefined ||
@@ -340,10 +323,11 @@ function cleanMobileForSFMC(
     ) {
 
         return null;
+
     }
 
 
-    const cleanNumber =
+    const value =
         String(phone)
             .replace(
                 /\D/g,
@@ -351,1055 +335,24 @@ function cleanMobileForSFMC(
             );
 
 
-    if (!cleanNumber) {
+    return value || null;
 
-        return null;
-    }
-
-
-    return cleanNumber;
 }
 
 
 // =========================================================
-// GENERATE TRANSACTION ID
+// TRANSACTION ID
 // =========================================================
 
 function generateTransactionId() {
 
     return crypto.randomUUID();
-}
-
-
-// =========================================================
-// XML ESCAPE
-// =========================================================
-
-function xmlEscape(
-    value
-) {
-
-    return String(
-        value || ""
-    )
-        .replace(
-            /&/g,
-            "&amp;"
-        )
-        .replace(
-            /</g,
-            "&lt;"
-        )
-        .replace(
-            />/g,
-            "&gt;"
-        )
-        .replace(
-            /"/g,
-            "&quot;"
-        )
-        .replace(
-            /'/g,
-            "&apos;"
-        );
-}
-
-
-// =========================================================
-// SOAP REQUEST
-// =========================================================
-//
-// IMPORTANT
-//
-// SOAP authentication uses the SAME OAuth token
-// generated by sfmcAuth.js.
-//
-// No username/password login is used.
-//
-// =========================================================
-
-function sendSOAPRequest(
-    xml,
-    soapAction = "Retrieve"
-) {
-
-    return new Promise(
-        async (resolve, reject) => {
-
-            try {
-
-                const token =
-                    await getAccessToken();
-
-
-                let soapBase =
-                    process.env.SFMC_SOAP_BASE_URI;
-
-
-                /*
-                 * If SFMC_SOAP_BASE_URI is not configured,
-                 * derive it from REST hostname.
-                 */
-
-                if (
-                    !soapBase
-                ) {
-
-                    const restBase =
-                        process.env.SFMC_REST_BASE_URI;
-
-
-                    if (
-                        restBase
-                    ) {
-
-                        soapBase =
-                            restBase.replace(
-                                ".rest.marketingcloudapis.com",
-                                ".soap.marketingcloudapis.com"
-                            );
-                    }
-                }
-
-
-                if (
-                    !soapBase
-                ) {
-
-                    throw new Error(
-                        "SFMC_SOAP_BASE_URI is not configured"
-                    );
-                }
-
-
-                const endpoint =
-                    soapBase.replace(
-                        /\/+$/,
-                        ""
-                    ) +
-                    "/Service.asmx";
-
-
-                console.log(
-                    "================================================"
-                );
-
-                console.log(
-                    "SFMC SOAP REQUEST"
-                );
-
-                console.log(
-                    "SOAP Endpoint:",
-                    endpoint
-                );
-
-                console.log(
-                    "SOAP Action:",
-                    soapAction
-                );
-
-                console.log(
-                    "OAuth token obtained successfully"
-                );
-
-                console.log(
-                    "================================================"
-                );
-
-
-                const url =
-                    new URL(
-                        endpoint
-                    );
-
-
-                const request =
-                    https.request(
-
-                        url,
-
-                        {
-
-                            method:
-                                "POST",
-
-                            headers: {
-
-                                "Content-Type":
-                                    "text/xml; charset=utf-8",
-
-                                "Content-Length":
-                                    Buffer.byteLength(
-                                        xml
-                                    ),
-
-                                SOAPAction:
-                                    `"${soapAction}"`
-
-                            }
-
-                        },
-
-                        response => {
-
-                            let body = "";
-
-
-                            response.on(
-                                "data",
-                                chunk => {
-
-                                    body += chunk;
-
-                                }
-                            );
-
-
-                            response.on(
-                                "end",
-                                () => {
-
-                                    console.log(
-                                        "SOAP HTTP STATUS:",
-                                        response.statusCode
-                                    );
-
-
-                                    if (
-                                        response.statusCode < 200 ||
-                                        response.statusCode >= 300
-                                    ) {
-
-                                        return reject(
-
-                                            new Error(
-
-                                                `SFMC SOAP HTTP ${response.statusCode}: ${body}`
-
-                                            )
-
-                                        );
-
-                                    }
-
-
-                                    resolve(
-                                        body
-                                    );
-
-                                }
-                            );
-
-                        }
-                    );
-
-
-                request.on(
-                    "error",
-                    reject
-                );
-
-
-                request.write(
-                    xml
-                );
-
-
-                request.end();
-
-            }
-
-            catch (error) {
-
-                reject(
-                    error
-                );
-
-            }
-
-        }
-    );
-}
-
-
-// =========================================================
-// RETRIEVE DATA EXTENSION CUSTOMER KEY
-// =========================================================
-//
-// Event Definition gives us dataExtensionId.
-// We use SOAP DataExtension ObjectID to retrieve
-// CustomerKey.
-//
-// =========================================================
-
-async function getDataExtensionCustomerKey(
-    dataExtensionId
-) {
-
-    const token =
-        await getAccessToken();
-
-
-    let soapBase =
-        process.env.SFMC_SOAP_BASE_URI;
-
-
-    if (
-        !soapBase
-    ) {
-
-        const restBase =
-            process.env.SFMC_REST_BASE_URI;
-
-
-        soapBase =
-            restBase.replace(
-                ".rest.marketingcloudapis.com",
-                ".soap.marketingcloudapis.com"
-            );
-    }
-
-
-    const endpoint =
-        soapBase.replace(
-            /\/+$/,
-            ""
-        ) +
-        "/Service.asmx";
-
-
-    const xml = `<?xml version="1.0" encoding="UTF-8"?>
-
-<s:Envelope
-    xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
-
-    <s:Header>
-
-        <fueloauth
-            xmlns="http://exacttarget.com">
-
-            ${xmlEscape(token)}
-
-        </fueloauth>
-
-    </s:Header>
-
-    <s:Body>
-
-        <RetrieveRequestMsg
-            xmlns="http://exacttarget.com/wsdl/partnerAPI">
-
-            <RetrieveRequest>
-
-                <ObjectType>
-                    DataExtension
-                </ObjectType>
-
-                <Properties>
-                    ObjectID
-                </Properties>
-
-                <Properties>
-                    CustomerKey
-                </Properties>
-
-                <Properties>
-                    Name
-                </Properties>
-
-                <Filter
-                    xsi:type="SimpleFilterPart"
-                    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-
-                    <Property>
-                        ObjectID
-                    </Property>
-
-                    <SimpleOperator>
-                        equals
-                    </SimpleOperator>
-
-                    <Value>
-                        ${xmlEscape(dataExtensionId)}
-                    </Value>
-
-                </Filter>
-
-            </RetrieveRequest>
-
-        </RetrieveRequestMsg>
-
-    </s:Body>
-
-</s:Envelope>`;
-
-
-    console.log(
-        "Retrieving Data Extension using ObjectID:",
-        dataExtensionId
-    );
-
-
-    const response =
-        await sendSOAPRequest(
-            xml,
-            "Retrieve"
-        );
-
-
-    console.log(
-        "Data Extension SOAP response received"
-    );
-
-
-    const customerKeyMatch =
-        response.match(
-            /<CustomerKey>([\s\S]*?)<\/CustomerKey>/i
-        );
-
-
-    const nameMatch =
-        response.match(
-            /<Name>([\s\S]*?)<\/Name>/i
-        );
-
-
-    if (
-        !customerKeyMatch
-    ) {
-
-        throw new Error(
-
-            "Unable to retrieve Data Extension CustomerKey. " +
-            "SOAP response: " +
-            response
-
-        );
-
-    }
-
-
-    const customerKey =
-        customerKeyMatch[1];
-
-
-    console.log(
-        "Data Extension CustomerKey:",
-        customerKey
-    );
-
-
-    console.log(
-        "Data Extension Name:",
-        nameMatch
-            ? nameMatch[1]
-            : ""
-    );
-
-
-    return {
-
-        customerKey,
-
-        name:
-            nameMatch
-                ? nameMatch[1]
-                : ""
-
-    };
 
 }
 
 
 // =========================================================
-// RETRIEVE DATA EXTENSION FIELDS
-// =========================================================
-
-async function getDataExtensionFields(
-    customerKey
-) {
-
-    const token =
-        await getAccessToken();
-
-
-    let soapBase =
-        process.env.SFMC_SOAP_BASE_URI;
-
-
-    if (
-        !soapBase
-    ) {
-
-        const restBase =
-            process.env.SFMC_REST_BASE_URI;
-
-
-        soapBase =
-            restBase.replace(
-                ".rest.marketingcloudapis.com",
-                ".soap.marketingcloudapis.com"
-            );
-    }
-
-
-    const endpoint =
-        soapBase.replace(
-            /\/+$/,
-            ""
-        ) +
-        "/Service.asmx";
-
-
-    const xml = `<?xml version="1.0" encoding="UTF-8"?>
-
-<s:Envelope
-    xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
-
-    <s:Header>
-
-        <fueloauth
-            xmlns="http://exacttarget.com">
-
-            ${xmlEscape(token)}
-
-        </fueloauth>
-
-    </s:Header>
-
-    <s:Body>
-
-        <RetrieveRequestMsg
-            xmlns="http://exacttarget.com/wsdl/partnerAPI">
-
-            <RetrieveRequest>
-
-                <ObjectType>
-                    DataExtensionField
-                </ObjectType>
-
-                <Properties>
-                    Name
-                </Properties>
-
-                <Properties>
-                    FieldType
-                </Properties>
-
-                <Properties>
-                    MaxLength
-                </Properties>
-
-                <Properties>
-                    IsRequired
-                </Properties>
-
-                <Properties>
-                    IsPrimaryKey
-                </Properties>
-
-                <Filter
-                    xsi:type="SimpleFilterPart"
-                    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-
-                    <Property>
-                        DataExtension.CustomerKey
-                    </Property>
-
-                    <SimpleOperator>
-                        equals
-                    </SimpleOperator>
-
-                    <Value>
-                        ${xmlEscape(customerKey)}
-                    </Value>
-
-                </Filter>
-
-            </RetrieveRequest>
-
-        </RetrieveRequestMsg>
-
-    </s:Body>
-
-</s:Envelope>`;
-
-
-    console.log(
-        "Retrieving fields for DE:",
-        customerKey
-    );
-
-
-    const response =
-        await sendSOAPRequest(
-            xml,
-            "Retrieve"
-        );
-
-
-    console.log(
-        "Data Extension Field SOAP response received"
-    );
-
-
-    const fields = [];
-
-
-    /*
-     * DataExtensionField results are returned
-     * inside Results elements.
-     */
-
-    const resultRegex =
-        /<Results>([\s\S]*?)<\/Results>/gi;
-
-
-    let match;
-
-
-    while (
-        (match =
-            resultRegex.exec(
-                response
-            ))
-    ) {
-
-        const block =
-            match[1];
-
-
-        const nameMatch =
-            block.match(
-                /<Name>([\s\S]*?)<\/Name>/i
-            );
-
-
-        if (
-            !nameMatch
-        ) {
-
-            continue;
-        }
-
-
-        const fieldTypeMatch =
-            block.match(
-                /<FieldType>([\s\S]*?)<\/FieldType>/i
-            );
-
-
-        const maxLengthMatch =
-            block.match(
-                /<MaxLength>([\s\S]*?)<\/MaxLength>/i
-            );
-
-
-        const requiredMatch =
-            block.match(
-                /<IsRequired>([\s\S]*?)<\/IsRequired>/i
-            );
-
-
-        const primaryKeyMatch =
-            block.match(
-                /<IsPrimaryKey>([\s\S]*?)<\/IsPrimaryKey>/i
-            );
-
-
-        fields.push({
-
-            name:
-                nameMatch[1],
-
-            fieldType:
-                fieldTypeMatch
-                    ? fieldTypeMatch[1]
-                    : "",
-
-            maxLength:
-                maxLengthMatch
-                    ? maxLengthMatch[1]
-                    : "",
-
-            isRequired:
-                requiredMatch
-                    ? requiredMatch[1]
-                    : "false",
-
-            isPrimaryKey:
-                primaryKeyMatch
-                    ? primaryKeyMatch[1]
-                    : "false"
-
-        });
-
-    }
-
-
-    console.log(
-        "Total fields found:",
-        fields.length
-    );
-
-
-    console.log(
-        JSON.stringify(
-            fields,
-            null,
-            2
-        )
-    );
-
-
-    if (
-        fields.length === 0
-    ) {
-
-        throw new Error(
-
-            "SFMC returned no Data Extension fields. " +
-            "SOAP response: " +
-            response
-
-        );
-
-    }
-
-
-    return fields;
-
-}
-
-
-// =========================================================
-// JOURNEY EVENT FIELD API
-// =========================================================
-//
-// UI calls:
-//
-// GET /fields?eventDefinitionKey=XXXXX
-//
-// Flow:
-//
-// Event Definition
-//       ↓
-// dataExtensionId
-//       ↓
-// SOAP DataExtension
-//       ↓
-// CustomerKey
-//       ↓
-// SOAP DataExtensionField
-//       ↓
-// fields
-//
-// =========================================================
-
-app.get(
-    "/fields",
-    async (req, res) => {
-
-        try {
-
-            const eventDefinitionKey =
-                req.query.eventDefinitionKey;
-
-
-            if (
-                !eventDefinitionKey
-            ) {
-
-                return res
-                    .status(400)
-                    .json({
-
-                        success:
-                            false,
-
-                        error:
-                            "eventDefinitionKey is required"
-
-                    });
-            }
-
-
-            console.log(
-                "================================================"
-            );
-
-            console.log(
-                "JOURNEY FIELD REQUEST"
-            );
-
-            console.log(
-                "Event Definition Key:",
-                eventDefinitionKey
-            );
-
-            console.log(
-                "================================================"
-            );
-
-
-            // =================================================
-            // GET OAUTH TOKEN
-            // =================================================
-
-            const token =
-                await getAccessToken();
-
-
-            // =================================================
-            // REST BASE
-            // =================================================
-
-            const restBase =
-                process.env.SFMC_REST_BASE_URI;
-
-
-            if (
-                !restBase
-            ) {
-
-                throw new Error(
-                    "SFMC_REST_BASE_URI is not configured"
-                );
-            }
-
-
-            const cleanRestBase =
-                restBase.replace(
-                    /\/+$/,
-                    ""
-                );
-
-
-            // =================================================
-            // GET EVENT DEFINITION
-            // =================================================
-            //
-            // Salesforce endpoint:
-            //
-            // GET /interaction/v1/eventDefinitions/key:{key}
-            //
-            // =================================================
-
-            const eventUrl =
-                `${cleanRestBase}` +
-                `/interaction/v1/eventDefinitions/key:` +
-                encodeURIComponent(
-                    eventDefinitionKey
-                );
-
-
-            console.log(
-                "Event Definition URL:",
-                eventUrl
-            );
-
-
-            const eventResponse =
-                await fetch(
-                    eventUrl,
-                    {
-
-                        method:
-                            "GET",
-
-                        headers: {
-
-                            Authorization:
-                                `Bearer ${token}`,
-
-                            Accept:
-                                "application/json"
-
-                        }
-
-                    }
-                );
-
-
-            const eventResponseText =
-                await eventResponse.text();
-
-
-            console.log(
-                "Event Definition HTTP:",
-                eventResponse.status
-            );
-
-
-            console.log(
-                "Event Definition Response:",
-                eventResponseText
-            );
-
-
-            if (
-                !eventResponse.ok
-            ) {
-
-                throw new Error(
-
-                    `Event Definition API failed. ` +
-                    `HTTP ${eventResponse.status}. ` +
-                    `Response: ${eventResponseText}`
-
-                );
-
-            }
-
-
-            let eventDefinition;
-
-
-            try {
-
-                eventDefinition =
-                    JSON.parse(
-                        eventResponseText
-                    );
-
-            }
-
-            catch (error) {
-
-                throw new Error(
-                    "Unable to parse Event Definition response"
-                );
-
-            }
-
-
-            // =================================================
-            // DATA EXTENSION ID
-            // =================================================
-
-            const dataExtensionId =
-                eventDefinition.dataExtensionId;
-
-
-            if (
-                !dataExtensionId
-            ) {
-
-                throw new Error(
-
-                    "Event Definition did not contain dataExtensionId. " +
-                    JSON.stringify(
-                        eventDefinition
-                    )
-
-                );
-
-            }
-
-
-            console.log(
-                "Event Data Extension ID:",
-                dataExtensionId
-            );
-
-
-            // =================================================
-            // GET DATA EXTENSION CUSTOMER KEY
-            // =================================================
-
-            const dataExtension =
-                await getDataExtensionCustomerKey(
-                    dataExtensionId
-                );
-
-
-            console.log(
-                "Data Extension CustomerKey:",
-                dataExtension.customerKey
-            );
-
-
-            // =================================================
-            // GET FIELDS
-            // =================================================
-
-            const fields =
-                await getDataExtensionFields(
-                    dataExtension.customerKey
-                );
-
-
-            // =================================================
-            // RESPONSE
-            // =================================================
-
-            return res
-                .status(200)
-                .json({
-
-                    success:
-                        true,
-
-                    eventDefinitionKey,
-
-                    dataExtensionId,
-
-                    dataExtensionKey:
-                        dataExtension.customerKey,
-
-                    dataExtensionName:
-                        dataExtension.name,
-
-                    fields
-
-                });
-
-        }
-
-        catch (error) {
-
-            console.error(
-                "================================================"
-            );
-
-            console.error(
-                "JOURNEY FIELD RETRIEVAL ERROR"
-            );
-
-            console.error(
-                "Error:",
-                error
-            );
-
-            console.error(
-                "Error Message:",
-                error.message
-            );
-
-            console.error(
-                "================================================"
-            );
-
-
-            return res
-                .status(500)
-                .json({
-
-                    success:
-                        false,
-
-                    error:
-                        error.message
-
-                });
-
-        }
-    }
-);
-
-
-// =========================================================
-// LOG SMS TRANSACTION TO SFMC
+// SFMC TRANSACTION LOG
 // =========================================================
 
 async function logTransaction({
@@ -1431,11 +384,12 @@ async function logTransaction({
     );
 
     console.log(
-        "SFMC TRANSACTION LOG START"
+        "SFMC TRANSACTION LOG"
     );
 
     console.log(
-        "================================================"
+        "TransactionId:",
+        transactionId
     );
 
 
@@ -1448,22 +402,12 @@ async function logTransaction({
             process.env.SFMC_TRANSACTION_DE_KEY;
 
 
-        console.log(
-            "SFMC_REST_BASE_URI:",
-            restBase || "(MISSING)"
-        );
-
-        console.log(
-            "SFMC_TRANSACTION_DE_KEY:",
-            deKey || "(MISSING)"
-        );
-
-
         if (!restBase) {
 
             throw new Error(
                 "SFMC_REST_BASE_URI is not configured"
             );
+
         }
 
 
@@ -1472,16 +416,8 @@ async function logTransaction({
             throw new Error(
                 "SFMC_TRANSACTION_DE_KEY is not configured"
             );
+
         }
-
-
-        // =====================================================
-        // ACCESS TOKEN
-        // =====================================================
-
-        console.log(
-            "Getting SFMC access token..."
-        );
 
 
         const token =
@@ -1491,21 +427,13 @@ async function logTransaction({
         if (!token) {
 
             throw new Error(
-                "SFMC access token was empty"
+                "SFMC access token is empty"
             );
+
         }
 
 
-        console.log(
-            "SFMC access token received successfully"
-        );
-
-
-        // =====================================================
-        // URL
-        // =====================================================
-
-        const cleanRestBase =
+        const cleanBase =
             restBase.replace(
                 /\/+$/,
                 ""
@@ -1513,29 +441,10 @@ async function logTransaction({
 
 
         const url =
-            `${cleanRestBase}` +
+            `${cleanBase}` +
             `/hub/v1/dataevents/key/` +
-            `${encodeURIComponent(
-                deKey
-            )}` +
+            `${encodeURIComponent(deKey)}` +
             `/rowset`;
-
-
-        console.log(
-            "Transaction Log URL:"
-        );
-
-        console.log(
-            url
-        );
-
-
-        // =====================================================
-        // PAYLOAD
-        // =====================================================
-
-        const createdDate =
-            new Date().toISOString();
 
 
         const payload = [
@@ -1586,7 +495,8 @@ async function logTransaction({
                         consentStatus || "",
 
                     CreatedDate:
-                        createdDate
+                        new Date()
+                            .toISOString()
 
                 }
 
@@ -1596,14 +506,13 @@ async function logTransaction({
 
 
         console.log(
-            "================================================"
+            "Transaction URL:",
+            url
         );
 
-        console.log(
-            "SFMC TRANSACTION PAYLOAD"
-        );
 
         console.log(
+            "Transaction payload:",
             JSON.stringify(
                 payload,
                 null,
@@ -1611,14 +520,6 @@ async function logTransaction({
             )
         );
 
-        console.log(
-            "================================================"
-        );
-
-
-        // =====================================================
-        // SEND
-        // =====================================================
 
         const response =
             await fetch(
@@ -1655,30 +556,14 @@ async function logTransaction({
 
 
         console.log(
-            "================================================"
-        );
-
-        console.log(
-            "SFMC TRANSACTION RESPONSE"
-        );
-
-        console.log(
-            "HTTP STATUS:",
+            "SFMC LOG HTTP STATUS:",
             response.status
         );
 
-        console.log(
-            "HTTP OK:",
-            response.ok
-        );
 
         console.log(
-            "RESPONSE:",
+            "SFMC LOG RESPONSE:",
             responseText
-        );
-
-        console.log(
-            "================================================"
         );
 
 
@@ -1688,11 +573,10 @@ async function logTransaction({
 
             throw new Error(
 
-                `SFMC Transaction Log API failed. ` +
-                `HTTP ${response.status}. ` +
-                `Response: ${responseText}`
+                `SFMC Transaction Log API failed. HTTP ${response.status}. Response: ${responseText}`
 
             );
+
         }
 
 
@@ -1721,36 +605,13 @@ async function logTransaction({
     catch (error) {
 
         console.error(
-            "================================================"
-        );
-
-        console.error(
             "SFMC TRANSACTION LOG FAILED"
         );
 
         console.error(
-            "TransactionId:",
-            transactionId
-        );
-
-        console.error(
-            "Error:",
             error.message
         );
 
-        console.error(
-            "================================================"
-        );
-
-
-        /*
-         * IMPORTANT
-         *
-         * Do not throw.
-         *
-         * SMS delivery must not be affected
-         * by transaction logging failure.
-         */
 
         return {
 
@@ -1770,18 +631,17 @@ async function logTransaction({
 
 
 // =========================================================
-// VERIFY JOURNEY BUILDER JWT
+// JOURNEY JWT
 // =========================================================
 
-function verifyJourneyJWT(
-    req
-) {
+function verifyJourneyJWT(req) {
 
     if (!JWT_SECRET) {
 
         throw new Error(
             "JWT_SECRET is not configured"
         );
+
     }
 
 
@@ -1802,8 +662,7 @@ function verifyJourneyJWT(
     }
 
     else if (
-        typeof req.body ===
-        "string"
+        typeof req.body === "string"
     ) {
 
         token =
@@ -1816,6 +675,7 @@ function verifyJourneyJWT(
         throw new Error(
             "JWT request body is not valid"
         );
+
     }
 
 
@@ -1828,6 +688,7 @@ function verifyJourneyJWT(
         throw new Error(
             "Empty Journey Builder JWT"
         );
+
     }
 
 
@@ -1835,11 +696,852 @@ function verifyJourneyJWT(
         token,
         JWT_SECRET
     );
+
 }
 
 
 // =========================================================
-// JOURNEY BUILDER EXECUTE
+// GET JOURNEY EVENT DEFINITION
+// =========================================================
+
+async function getEventDefinition(
+    eventDefinitionKey
+) {
+
+    if (
+        !eventDefinitionKey
+    ) {
+
+        throw new Error(
+            "eventDefinitionKey is required"
+        );
+
+    }
+
+
+    const token =
+        await getAccessToken();
+
+
+    const restBase =
+        process.env.SFMC_REST_BASE_URI
+            .replace(
+                /\/+$/,
+                ""
+            );
+
+
+    const url =
+        `${restBase}` +
+        `/interaction/v1/eventDefinitions/key:` +
+        `${encodeURIComponent(
+            eventDefinitionKey
+        )}`;
+
+
+    console.log(
+        "Getting Event Definition:",
+        url
+    );
+
+
+    const response =
+        await fetch(
+            url,
+            {
+
+                method:
+                    "GET",
+
+                headers: {
+
+                    Authorization:
+                        `Bearer ${token}`,
+
+                    Accept:
+                        "application/json"
+
+                }
+
+            }
+        );
+
+
+    const text =
+        await response.text();
+
+
+    if (
+        !response.ok
+    ) {
+
+        throw new Error(
+
+            `Event Definition API failed. HTTP ${response.status}. ${text}`
+
+        );
+
+    }
+
+
+    return JSON.parse(
+        text
+    );
+
+}
+
+
+// =========================================================
+// XML ESCAPE
+// =========================================================
+
+function escapeXml(value) {
+
+    return String(
+        value || ""
+    )
+        .replace(
+            /&/g,
+            "&amp;"
+        )
+        .replace(
+            /</g,
+            "&lt;"
+        )
+        .replace(
+            />/g,
+            "&gt;"
+        )
+        .replace(
+            /"/g,
+            "&quot;"
+        )
+        .replace(
+            /'/g,
+            "&apos;"
+        );
+
+}
+
+
+// =========================================================
+// SOAP DATA EXTENSION FIELD RETRIEVAL
+// =========================================================
+//
+// OAuth Bearer token is used.
+// NO SFMC USERNAME/PASSWORD required.
+//
+// =========================================================
+
+async function getDataExtensionFields(
+    dataExtensionCustomerKey
+) {
+
+    if (
+        !dataExtensionCustomerKey
+    ) {
+
+        throw new Error(
+            "Data Extension CustomerKey is missing"
+        );
+
+    }
+
+
+    const auth =
+        await getAuthDetails();
+
+
+    const token =
+        auth.access_token;
+
+
+    let soapBase =
+        auth.soap_instance_url ||
+        process.env.SFMC_SOAP_BASE_URI;
+
+
+    if (!soapBase) {
+
+        throw new Error(
+            "SFMC SOAP endpoint is not available"
+        );
+
+    }
+
+
+    soapBase =
+        soapBase.replace(
+            /\/+$/,
+            ""
+        );
+
+
+    const endpoint =
+        soapBase.endsWith(
+            "/Service.asmx"
+        )
+            ? soapBase
+            : `${soapBase}/Service.asmx`;
+
+
+    console.log(
+        "SOAP endpoint:",
+        endpoint
+    );
+
+
+    const envelope = `<?xml version="1.0" encoding="UTF-8"?>
+<soap:Envelope
+    xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+    xmlns:tns="http://exacttarget.com/wsdl/partnerAPI">
+
+    <soap:Header>
+        <fueloauth xmlns="http://exacttarget.com">${escapeXml(token)}</fueloauth>
+    </soap:Header>
+
+    <soap:Body>
+
+        <RetrieveRequestMsg
+            xmlns="http://exacttarget.com/wsdl/partnerAPI">
+
+            <RetrieveRequest>
+
+                <ObjectType>DataExtensionField</ObjectType>
+
+                <Properties>Name</Properties>
+                <Properties>FieldType</Properties>
+                <Properties>MaxLength</Properties>
+                <Properties>IsRequired</Properties>
+                <Properties>IsPrimaryKey</Properties>
+
+                <Filter xsi:type="SimpleFilterPart">
+
+                    <Property>DataExtension.CustomerKey</Property>
+
+                    <SimpleOperator>equals</SimpleOperator>
+
+                    <Value>${escapeXml(
+                        dataExtensionCustomerKey
+                    )}</Value>
+
+                </Filter>
+
+            </RetrieveRequest>
+
+        </RetrieveRequestMsg>
+
+    </soap:Body>
+
+</soap:Envelope>`;
+
+
+    const response =
+        await fetch(
+            endpoint,
+            {
+
+                method:
+                    "POST",
+
+                headers: {
+
+                    Authorization:
+                        `Bearer ${token}`,
+
+                    "Content-Type":
+                        "text/xml; charset=utf-8",
+
+                    SOAPAction:
+                        "Retrieve"
+
+                },
+
+                body:
+                    envelope
+
+            }
+        );
+
+
+    const text =
+        await response.text();
+
+
+    console.log(
+        "SOAP HTTP STATUS:",
+        response.status
+    );
+
+
+    if (
+        !response.ok
+    ) {
+
+        console.error(
+            "SOAP ERROR:",
+            text
+        );
+
+
+        throw new Error(
+
+            `SFMC SOAP field retrieval failed. HTTP ${response.status}. ${text}`
+
+        );
+
+    }
+
+
+    if (
+        /<faultstring>/i.test(
+            text
+        )
+    ) {
+
+        const fault =
+            text.match(
+                /<faultstring>(.*?)<\/faultstring>/i
+            );
+
+
+        throw new Error(
+
+            `SFMC SOAP error: ${
+                fault
+                    ? fault[1]
+                    : "Unknown SOAP error"
+            }`
+
+        );
+
+    }
+
+
+    const fields = [];
+
+
+    const resultRegex =
+        /<Results[^>]*>([\s\S]*?)<\/Results>/gi;
+
+
+    let resultMatch;
+
+
+    while (
+        (
+            resultMatch =
+                resultRegex.exec(
+                    text
+                )
+        ) !== null
+    ) {
+
+        const block =
+            resultMatch[1];
+
+
+        const name =
+            extractXmlValue(
+                block,
+                "Name"
+            );
+
+
+        const fieldType =
+            extractXmlValue(
+                block,
+                "FieldType"
+            );
+
+
+        const maxLength =
+            extractXmlValue(
+                block,
+                "MaxLength"
+            );
+
+
+        const isRequired =
+            extractXmlValue(
+                block,
+                "IsRequired"
+            );
+
+
+        const isPrimaryKey =
+            extractXmlValue(
+                block,
+                "IsPrimaryKey"
+            );
+
+
+        if (name) {
+
+            fields.push({
+
+                name,
+
+                fieldType:
+                    fieldType || "",
+
+                maxLength:
+                    maxLength || "",
+
+                isRequired:
+                    isRequired === "true",
+
+                isPrimaryKey:
+                    isPrimaryKey === "true"
+
+            });
+
+        }
+
+    }
+
+
+    // Fallback XML parsing if Results wrapper differs.
+    if (
+        fields.length === 0
+    ) {
+
+        const nameRegex =
+            /<Name>(.*?)<\/Name>/gi;
+
+
+        let match;
+
+
+        while (
+            (
+                match =
+                    nameRegex.exec(
+                        text
+                    )
+            ) !== null
+        ) {
+
+            const name =
+                decodeXml(
+                    match[1]
+                );
+
+
+            if (
+                name &&
+                !fields.some(
+                    f =>
+                        f.name === name
+                )
+            ) {
+
+                fields.push({
+
+                    name,
+
+                    fieldType:
+                        "",
+
+                    maxLength:
+                        "",
+
+                    isRequired:
+                        false,
+
+                    isPrimaryKey:
+                        false
+
+                });
+
+            }
+
+        }
+
+    }
+
+
+    console.log(
+        "Retrieved Event DE fields:",
+        fields
+    );
+
+
+    return fields;
+
+}
+
+
+// =========================================================
+// XML VALUE
+// =========================================================
+
+function extractXmlValue(
+    xml,
+    tag
+) {
+
+    const regex =
+        new RegExp(
+            `<${tag}[^>]*>([\\\\s\\\\S]*?)<\\/${tag}>`,
+            "i"
+        );
+
+
+    const match =
+        xml.match(
+            regex
+        );
+
+
+    return match
+        ? decodeXml(
+            match[1]
+        )
+        : "";
+
+}
+
+
+// =========================================================
+// XML DECODE
+// =========================================================
+
+function decodeXml(value) {
+
+    return String(
+        value || ""
+    )
+        .replace(
+            /&lt;/g,
+            "<"
+        )
+        .replace(
+            /&gt;/g,
+            ">"
+        )
+        .replace(
+            /&quot;/g,
+            '"'
+        )
+        .replace(
+            /&apos;/g,
+            "'"
+        )
+        .replace(
+            /&amp;/g,
+            "&"
+        );
+
+}
+
+
+// =========================================================
+// EVENT FIELDS ENDPOINT
+// =========================================================
+//
+// Browser calls:
+//
+// GET /event-fields?eventDefinitionKey=XXXX
+//
+// =========================================================
+
+app.get(
+    "/event-fields",
+    async (req, res) => {
+
+        try {
+
+            const eventDefinitionKey =
+                req.query.eventDefinitionKey;
+
+
+            if (
+                !eventDefinitionKey
+            ) {
+
+                return res
+                    .status(400)
+                    .json({
+
+                        success:
+                            false,
+
+                        error:
+                            "eventDefinitionKey is required"
+
+                    });
+
+            }
+
+
+            console.log(
+                "================================================"
+            );
+
+            console.log(
+                "EVENT FIELD REQUEST"
+            );
+
+            console.log(
+                "Event Definition Key:",
+                eventDefinitionKey
+            );
+
+
+            // -------------------------------------------------
+            // GET EVENT DEFINITION
+            // -------------------------------------------------
+
+            const eventDefinition =
+                await getEventDefinition(
+                    eventDefinitionKey
+                );
+
+
+            console.log(
+                "Event Definition:",
+                JSON.stringify(
+                    eventDefinition,
+                    null,
+                    2
+                )
+            );
+
+
+            const dataExtensionId =
+                eventDefinition
+                    .dataExtensionId;
+
+
+            const dataExtensionName =
+                eventDefinition
+                    .dataExtensionName ||
+                "";
+
+
+            if (
+                !dataExtensionId
+            ) {
+
+                return res
+                    .status(400)
+                    .json({
+
+                        success:
+                            false,
+
+                        error:
+                            "Event Definition does not contain dataExtensionId",
+
+                        eventDefinition
+
+                    });
+
+            }
+
+
+            // -------------------------------------------------
+            // RETRIEVE DATA EXTENSION
+            // -------------------------------------------------
+            //
+            // The Event Definition API gives us the DE ID.
+            //
+            // We need the CustomerKey to retrieve fields.
+            //
+            // -------------------------------------------------
+
+            const token =
+                await getAccessToken();
+
+
+            const restBase =
+                process.env.SFMC_REST_BASE_URI
+                    .replace(
+                        /\/+$/,
+                        ""
+                    );
+
+
+            const deUrl =
+                `${restBase}` +
+                `/data/v1/customobjectdata/key/`;
+
+
+            // -------------------------------------------------
+            // First attempt:
+            // use event definition schema if available.
+            // -------------------------------------------------
+
+            let fields = [];
+
+
+            if (
+                eventDefinition.schema &&
+                Array.isArray(
+                    eventDefinition
+                        .schema
+                        .fields
+                )
+            ) {
+
+                fields =
+                    eventDefinition
+                        .schema
+                        .fields
+                        .map(
+                            field => ({
+
+                                name:
+                                    field.name ||
+                                    field.Name,
+
+                                fieldType:
+                                    field.type ||
+                                    field.FieldType ||
+                                    ""
+
+                            })
+                        )
+                        .filter(
+                            field =>
+                                field.name
+                        );
+
+            }
+
+
+            // -------------------------------------------------
+            // If schema doesn't expose fields,
+            // use DE CustomerKey.
+            // -------------------------------------------------
+
+            if (
+                fields.length === 0
+            ) {
+
+                // Some event definitions expose
+                // the DE customer key in configuration.
+                const possibleKeys = [
+
+                    eventDefinition
+                        .dataExtensionKey,
+
+                    eventDefinition
+                        .dataExtensionCustomerKey,
+
+                    eventDefinition
+                        .configuration
+                        ?.dataExtensionKey,
+
+                    eventDefinition
+                        .arguments
+                        ?.dataExtensionKey
+
+                ].filter(Boolean);
+
+
+                if (
+                    possibleKeys.length > 0
+                ) {
+
+                    fields =
+                        await getDataExtensionFields(
+                            possibleKeys[0]
+                        );
+
+                }
+
+            }
+
+
+            // -------------------------------------------------
+            // Return error with useful information
+            // -------------------------------------------------
+
+            if (
+                fields.length === 0
+            ) {
+
+                return res
+                    .status(500)
+                    .json({
+
+                        success:
+                            false,
+
+                        error:
+                            "Unable to retrieve Event fields",
+
+                        eventDefinitionKey,
+
+                        dataExtensionId,
+
+                        dataExtensionName,
+
+                        message:
+                            "The Event Definition returned a Data Extension ID but no field metadata was available."
+
+                    });
+
+            }
+
+
+            console.log(
+                "EVENT FIELDS SUCCESS:",
+                fields
+            );
+
+
+            return res
+                .status(200)
+                .json({
+
+                    success:
+                        true,
+
+                    eventDefinitionKey,
+
+                    dataExtensionId,
+
+                    dataExtensionName,
+
+                    fields
+
+                });
+
+        }
+
+        catch (error) {
+
+            console.error(
+                "EVENT FIELD ERROR:",
+                error
+            );
+
+
+            return res
+                .status(500)
+                .json({
+
+                    success:
+                        false,
+
+                    error:
+                        error.message
+
+                });
+
+        }
+
+    }
+);
+
+
+// =========================================================
+// EXECUTE
 // =========================================================
 
 app.post(
@@ -1868,30 +1570,19 @@ app.post(
         );
 
         console.log(
-            "JOURNEY BUILDER EXECUTE REQUEST RECEIVED"
+            "JOURNEY BUILDER EXECUTE"
         );
 
         console.log(
-            "Transaction ID:",
+            "TransactionId:",
             transactionId
-        );
-
-        console.log(
-            "Content-Type:",
-            req.get(
-                "content-type"
-            )
-        );
-
-        console.log(
-            "================================================"
         );
 
 
         try {
 
             // =================================================
-            // VERIFY JWT
+            // JWT
             // =================================================
 
             const decoded =
@@ -1901,15 +1592,7 @@ app.post(
 
 
             console.log(
-                "Journey Builder JWT verified successfully"
-            );
-
-
-            console.log(
-                "Decoded JWT keys:",
-                Object.keys(
-                    decoded || {}
-                )
+                "JWT VERIFIED"
             );
 
 
@@ -1923,12 +1606,7 @@ app.post(
             );
 
 
-            // =================================================
-            // GET IN ARGUMENTS
-            // =================================================
-
             if (
-                !decoded.inArguments ||
                 !Array.isArray(
                     decoded.inArguments
                 ) ||
@@ -1936,8 +1614,9 @@ app.post(
             ) {
 
                 throw new Error(
-                    "No inArguments found in Journey Builder JWT"
+                    "No inArguments found"
                 );
+
             }
 
 
@@ -1949,7 +1628,7 @@ app.post(
 
 
             console.log(
-                "Merged InArguments:",
+                "Resolved InArguments:",
                 JSON.stringify(
                     inArgs,
                     null,
@@ -1964,31 +1643,19 @@ app.post(
 
             contactKey =
                 inArgs.contactKey ||
-
                 inArgs.ContactKey ||
-
-                inArgs.contactkey ||
-
                 "";
 
 
             // =================================================
-            // MOBILE NUMBER
+            // PHONE
             // =================================================
 
             const rawPhone =
                 inArgs.phoneNumber ||
-
                 inArgs.PhoneNumber ||
-
-                inArgs.phonenumber ||
-
                 inArgs.mobileNumber ||
-
                 inArgs.MobileNumber ||
-
-                inArgs.mobilenumber ||
-
                 "";
 
 
@@ -2001,16 +1668,24 @@ app.post(
             // =================================================
             // MESSAGE
             // =================================================
+            //
+            // IMPORTANT:
+            //
+            // Journey Builder should resolve:
+            //
+            // Hello {{Event.KEY.FirstName}}
+            //
+            // into:
+            //
+            // Hello Mohit
+            //
+            // before calling /execute.
+            //
+            // =================================================
 
             message =
                 inArgs.message ||
-
                 inArgs.Message ||
-
-                inArgs.smsMessage ||
-
-                inArgs.SMSMessage ||
-
                 "";
 
 
@@ -2019,34 +1694,22 @@ app.post(
             );
 
             console.log(
-                "JOURNEY VALUES"
+                "RUNTIME VALUES"
             );
 
             console.log(
                 "ContactKey:",
-                contactKey || "(EMPTY)"
+                contactKey
             );
 
             console.log(
-                "Raw Mobile:",
-                rawPhone || "(EMPTY)"
-            );
-
-            console.log(
-                "Normalized Mobile:",
-                phone || "(EMPTY)"
-            );
-
-            console.log(
-                "SFMC Mobile:",
-                cleanMobileForSFMC(
-                    phone
-                ) || "(EMPTY)"
+                "Phone:",
+                phone
             );
 
             console.log(
                 "Message:",
-                message || "(EMPTY)"
+                message
             );
 
             console.log(
@@ -2060,11 +1723,6 @@ app.post(
 
             if (!contactKey) {
 
-                console.error(
-                    "MISSING CONTACT KEY"
-                );
-
-
                 await logTransaction({
 
                     transactionId,
@@ -2072,7 +1730,7 @@ app.post(
                     contactKey,
 
                     mobileNumber:
-                        phone,
+                        phone || "",
 
                     message,
 
@@ -2098,6 +1756,7 @@ app.post(
                         transactionId
 
                     });
+
             }
 
 
@@ -2106,11 +1765,6 @@ app.post(
             // =================================================
 
             if (!phone) {
-
-                console.error(
-                    "MISSING MOBILE NUMBER"
-                );
-
 
                 await logTransaction({
 
@@ -2145,6 +1799,7 @@ app.post(
                         transactionId
 
                     });
+
             }
 
 
@@ -2157,11 +1812,6 @@ app.post(
                     message
                 ).trim()
             ) {
-
-                console.error(
-                    "EMPTY SMS MESSAGE"
-                );
-
 
                 await logTransaction({
 
@@ -2196,11 +1846,12 @@ app.post(
                         transactionId
 
                     });
+
             }
 
 
             // =================================================
-            // CLEAN MOBILE
+            // CONSENT
             // =================================================
 
             const sfmcMobileNumber =
@@ -2209,30 +1860,9 @@ app.post(
                 );
 
 
-            // =================================================
-            // CONSENT CHECK
-            // =================================================
-
             console.log(
-                "================================================"
-            );
-
-            console.log(
-                "CONSENT CHECK"
-            );
-
-            console.log(
-                "Consent lookup key:",
+                "Consent lookup:",
                 sfmcMobileNumber
-            );
-
-            console.log(
-                "Consent lookup method:",
-                "MobileNumber"
-            );
-
-            console.log(
-                "================================================"
             );
 
 
@@ -2243,12 +1873,7 @@ app.post(
 
 
             console.log(
-                "Consent API completed"
-            );
-
-
-            console.log(
-                "Consent result:",
+                "Consent:",
                 JSON.stringify(
                     consent,
                     null,
@@ -2257,16 +1882,7 @@ app.post(
             );
 
 
-            // =================================================
-            // NO CONSENT
-            // =================================================
-
             if (!consent) {
-
-                console.error(
-                    "NO CONSENT RECORD FOUND"
-                );
-
 
                 await logTransaction({
 
@@ -2304,6 +1920,7 @@ app.post(
                         transactionId
 
                     });
+
             }
 
 
@@ -2315,47 +1932,10 @@ app.post(
                 consent.SMSOptIn === true;
 
 
-            console.log(
-                "================================================"
-            );
-
-            console.log(
-                "CONSENT STATUS"
-            );
-
-            console.log(
-                "MobileNumber:",
-                sfmcMobileNumber
-            );
-
-            console.log(
-                "ContactKey:",
-                contactKey
-            );
-
-            console.log(
-                "SMSOptIn:",
-                consent.SMSOptIn
-            );
-
-            console.log(
-                "isOptedIn:",
-                isOptedIn
-            );
-
-            console.log(
-                "================================================"
-            );
-
-
-            // =================================================
-            // BLOCK OPTED OUT
-            // =================================================
-
             if (!isOptedIn) {
 
-                console.warn(
-                    "SMS BLOCKED - CUSTOMER IS OPTED OUT"
+                console.log(
+                    "SMS BLOCKED - OPTED OUT"
                 );
 
 
@@ -2395,37 +1975,16 @@ app.post(
                         transactionId
 
                     });
+
             }
 
 
             // =================================================
-            // SEND SMS
+            // TWILIO
             // =================================================
 
             console.log(
-                "================================================"
-            );
-
-            console.log(
-                "CONSENT APPROVED"
-            );
-
-            console.log(
-                "Calling Twilio sendSMS()"
-            );
-
-            console.log(
-                "To:",
-                phone
-            );
-
-            console.log(
-                "Message:",
-                message
-            );
-
-            console.log(
-                "================================================"
+                "Sending SMS..."
             );
 
 
@@ -2443,26 +2002,13 @@ app.post(
                 });
 
 
-            // =================================================
-            // VERIFY TWILIO
-            // =================================================
-
             console.log(
-                "Twilio response received"
-            );
-
-
-            console.log(
-                "Twilio Message SID:",
-                twilioMessage?.sid ||
-                "(NO SID)"
-            );
-
-
-            console.log(
-                "Twilio Status:",
-                twilioMessage?.status ||
-                "(UNKNOWN)"
+                "Twilio response:",
+                JSON.stringify(
+                    twilioMessage,
+                    null,
+                    2
+                )
             );
 
 
@@ -2472,35 +2018,14 @@ app.post(
             ) {
 
                 throw new Error(
-                    "Twilio did not return a Message SID"
+                    "Twilio did not return Message SID"
                 );
+
             }
 
 
             // =================================================
-            // SMS SUCCESS
-            // =================================================
-
-            console.log(
-                "================================================"
-            );
-
-            console.log(
-                "TWILIO SMS ACCEPTED"
-            );
-
-            console.log(
-                "Message SID:",
-                twilioMessage.sid
-            );
-
-            console.log(
-                "================================================"
-            );
-
-
-            // =================================================
-            // TRANSACTION LOG
+            // LOG SUCCESS
             // =================================================
 
             const logResult =
@@ -2530,65 +2055,19 @@ app.post(
                 });
 
 
-            // =================================================
-            // LOG FAILURE DOES NOT AFFECT SMS
-            // =================================================
-
-            if (
-                !logResult ||
-                logResult.success !== true
-            ) {
-
-                console.error(
-                    "WARNING: SMS was sent but SFMC transaction logging failed."
-                );
-
-                console.error(
-                    "TransactionId:",
-                    transactionId
-                );
-
-                console.error(
-                    "Twilio SID:",
-                    twilioMessage.sid
-                );
-
-            }
+            console.log(
+                "Transaction log result:",
+                JSON.stringify(
+                    logResult,
+                    null,
+                    2
+                )
+            );
 
 
             // =================================================
-            // SUCCESS
+            // RESPONSE
             // =================================================
-
-            console.log(
-                "================================================"
-            );
-
-            console.log(
-                "SMS TRIGGERED SUCCESSFULLY"
-            );
-
-            console.log(
-                "Transaction ID:",
-                transactionId
-            );
-
-            console.log(
-                "Twilio SID:",
-                twilioMessage.sid
-            );
-
-            console.log(
-                "SFMC Log:",
-                logResult?.success
-                    ? "SUCCESS"
-                    : "FAILED"
-            );
-
-            console.log(
-                "================================================"
-            );
-
 
             return res
                 .status(200)
@@ -2603,46 +2082,25 @@ app.post(
                         twilioMessage.sid,
 
                     transactionLog:
-                        logResult?.success
+                        logResult.success
                             ? "success"
                             : "failed"
 
                 });
+
 
         }
 
         catch (error) {
 
             console.error(
-                "================================================"
-            );
-
-            console.error(
-                "EXECUTE ERROR"
-            );
-
-            console.error(
-                "Transaction ID:",
-                transactionId
-            );
-
-            console.error(
-                "Error:",
+                "EXECUTE ERROR:",
                 error
-            );
-
-            console.error(
-                "Error Message:",
-                error.message
-            );
-
-            console.error(
-                "================================================"
             );
 
 
             // =================================================
-            // ERROR TRANSACTION LOG
+            // ERROR LOG
             // =================================================
 
             const logResult =
@@ -2664,27 +2122,15 @@ app.post(
                         "EXECUTE_ERROR",
 
                     errorCode:
-                        error.code ||
-                        "",
+                        error.code || "",
 
                     errorMessage:
-                        error.message ||
-                        "",
+                        error.message || "",
 
                     consentStatus:
                         ""
 
                 });
-
-
-            console.log(
-                "Error transaction log result:",
-                JSON.stringify(
-                    logResult,
-                    null,
-                    2
-                )
-            );
 
 
             return res
@@ -2700,160 +2146,32 @@ app.post(
                         "EXECUTE_ERROR",
 
                     message:
-                        error.message
+                        error.message,
+
+                    transactionLog:
+                        logResult.success
+                            ? "success"
+                            : "failed"
 
                 });
 
         }
 
     }
+
 );
 
 
 // =========================================================
-// DEBUG - CONSENT
-// =========================================================
-
-app.get(
-    "/debug/consent",
-
-    async (req, res) => {
-
-        try {
-
-            const mobileNumber =
-                req.query.mobileNumber;
-
-
-            if (!mobileNumber) {
-
-                return res
-                    .status(400)
-                    .json({
-
-                        found:
-                            false,
-
-                        error:
-                            "mobileNumber is required"
-
-                    });
-            }
-
-
-            const normalizedPhone =
-                normalizePhone(
-                    mobileNumber
-                );
-
-
-            const record =
-                await getConsentByMobile(
-                    cleanMobileForSFMC(
-                        normalizedPhone
-                    )
-                );
-
-
-            if (!record) {
-
-                return res
-                    .status(404)
-                    .json({
-
-                        found:
-                            false,
-
-                        mobileNumber:
-                            normalizedPhone,
-
-                        sfmcMobileNumber:
-                            cleanMobileForSFMC(
-                                normalizedPhone
-                            ),
-
-                        message:
-                            "No consent record found"
-
-                    });
-            }
-
-
-            return res
-                .status(200)
-                .json({
-
-                    found:
-                        true,
-
-                    mobileNumber:
-                        normalizedPhone,
-
-                    sfmcMobileNumber:
-                        cleanMobileForSFMC(
-                            normalizedPhone
-                        ),
-
-                    consent:
-                        record
-
-                });
-
-        }
-
-        catch (error) {
-
-            console.error(
-                "DEBUG CONSENT ERROR:",
-                error
-            );
-
-
-            return res
-                .status(500)
-                .json({
-
-                    found:
-                        false,
-
-                    error:
-                        error.message
-
-                });
-        }
-    }
-);
-
-
-// =========================================================
-// DEBUG - TRANSACTION LOG
+// DEBUG TRANSACTION LOG
 // =========================================================
 
 app.get(
     "/debug/transaction-log",
-
     async (req, res) => {
 
         const transactionId =
             generateTransactionId();
-
-
-        console.log(
-            "================================================"
-        );
-
-        console.log(
-            "MANUAL TRANSACTION LOG TEST"
-        );
-
-        console.log(
-            "TransactionId:",
-            transactionId
-        );
-
-        console.log(
-            "================================================"
-        );
 
 
         const result =
@@ -2879,12 +2197,6 @@ app.get(
                 twilioMessageSid:
                     "DEBUG_SID",
 
-                errorCode:
-                    "",
-
-                errorMessage:
-                    "",
-
                 consentStatus:
                     "TEST"
 
@@ -2904,438 +2216,126 @@ app.get(
                 result
 
             });
+
     }
 );
 
 
 // =========================================================
-// DEBUG - PHONE
+// DEBUG CONSENT
 // =========================================================
 
 app.get(
-    "/debug/phone",
-
-    (req, res) => {
-
-        const input =
-            req.query.phone;
-
-
-        if (!input) {
-
-            return res
-                .status(400)
-                .json({
-
-                    error:
-                        "phone query parameter is required"
-
-                });
-        }
-
-
-        const normalized =
-            normalizePhone(
-                input
-            );
-
-
-        const sfmcNumber =
-            cleanMobileForSFMC(
-                normalized
-            );
-
-
-        return res
-            .status(200)
-            .json({
-
-                input,
-
-                twilioFormat:
-                    normalized,
-
-                sfmcFormat:
-                    sfmcNumber
-
-            });
-    }
-);
-
-
-// =========================================================
-// VERIFY TWILIO REQUEST
-// =========================================================
-
-function verifyTwilioRequest(
-    req
-) {
-
-    const authToken =
-        process.env
-            .TWILIO_AUTH_TOKEN;
-
-
-    if (!authToken) {
-
-        throw new Error(
-            "TWILIO_AUTH_TOKEN is not configured"
-        );
-    }
-
-
-    const signature =
-        req.get(
-            "X-Twilio-Signature"
-        );
-
-
-    if (!signature) {
-
-        console.error(
-            "X-Twilio-Signature header missing"
-        );
-
-        return false;
-    }
-
-
-    const url =
-        `${PUBLIC_BASE_URL}` +
-        `${req.originalUrl}`;
-
-
-    return twilio.validateRequest(
-
-        authToken,
-
-        signature,
-
-        url,
-
-        req.body
-
-    );
-}
-
-
-// =========================================================
-// TWILIO INBOUND
-// =========================================================
-
-app.post(
-
-    "/twilio/inbound",
-
+    "/debug/consent",
     async (req, res) => {
 
         try {
 
-            console.log(
-                "================================================"
-            );
-
-            console.log(
-                "TWILIO INBOUND MESSAGE"
-            );
-
-            console.log(
-                "================================================"
-            );
-
-
-            const valid =
-                verifyTwilioRequest(
-                    req
-                );
-
-
-            if (!valid) {
-
-                console.error(
-                    "Invalid Twilio signature"
-                );
-
-                return res
-                    .status(403)
-                    .send(
-                        "Forbidden"
-                    );
-            }
-
-
-            const from =
-                normalizePhone(
-                    req.body.From
-                );
-
-
             const mobileNumber =
-                cleanMobileForSFMC(
-                    from
-                );
+                req.query.mobileNumber;
 
 
-            const body =
-                String(
-                    req.body.Body ||
-                    ""
-                )
-                    .trim()
-                    .toUpperCase();
-
-
-            const messageSid =
-                req.body.MessageSid ||
-                "";
-
-
-            console.log(
-                "Twilio From:",
-                from
-            );
-
-            console.log(
-                "SFMC MobileNumber:",
-                mobileNumber
-            );
-
-            console.log(
-                "SMS Body:",
-                body
-            );
-
-            console.log(
-                "Message SID:",
-                messageSid
-            );
-
-
-            const optOutKeywords = [
-
-                "STOP",
-                "UNSUBSCRIBE",
-                "CANCEL",
-                "END",
-                "QUIT"
-
-            ];
-
-
-            const isOptOut =
-                optOutKeywords.includes(
-                    body
-                );
-
-
-            if (!isOptOut) {
-
-                console.log(
-                    "Not an opt-out keyword."
-                );
-
-
-                res.type(
-                    "text/xml"
-                );
-
+            if (!mobileNumber) {
 
                 return res
-                    .status(200)
-                    .send(
+                    .status(400)
+                    .json({
 
-                        "<?xml version=\"1.0\" " +
-                        "encoding=\"UTF-8\"?>" +
+                        found:
+                            false,
 
-                        "<Response></Response>"
+                        error:
+                            "mobileNumber is required"
 
-                    );
+                    });
+
             }
 
 
-            console.log(
-                "OPT-OUT REQUEST DETECTED"
-            );
+            const normalized =
+                normalizePhone(
+                    mobileNumber
+                );
 
 
-            const contact =
+            const record =
                 await getConsentByMobile(
-                    mobileNumber
+                    cleanMobileForSFMC(
+                        normalized
+                    )
                 );
 
 
-            if (!contact) {
-
-                console.warn(
-                    "No consent record found for:",
-                    mobileNumber
-                );
-
-
-                await logTransaction({
-
-                    transactionId:
-                        messageSid ||
-                        generateTransactionId(),
-
-                    contactKey:
-                        "",
-
-                    mobileNumber,
-
-                    message:
-                        body,
-
-                    status:
-                        "SKIPPED",
-
-                    reason:
-                        "NO_CONSENT_RECORD",
-
-                    twilioMessageSid:
-                        messageSid,
-
-                    consentStatus:
-                        "NO_RECORD"
-
-                });
-
-
-                res.type(
-                    "text/xml"
-                );
-
+            if (!record) {
 
                 return res
-                    .status(200)
-                    .send(
+                    .status(404)
+                    .json({
 
-                        "<?xml version=\"1.0\" " +
-                        "encoding=\"UTF-8\"?>" +
+                        found:
+                            false,
 
-                        "<Response></Response>"
+                        mobileNumber:
+                            normalized,
 
-                    );
+                        sfmcMobileNumber:
+                            cleanMobileForSFMC(
+                                normalized
+                            )
+
+                    });
+
             }
-
-
-            const contactKey =
-                contact.ContactKey ||
-                "";
-
-
-            const result =
-                await optOut({
-
-                    contactKey,
-
-                    mobileNumber,
-
-                    source:
-                        "Twilio",
-
-                    consentVersion:
-                        contact.ConsentVersion ||
-                        "v1"
-
-                });
-
-
-            console.log(
-                "SFMC OPT-OUT UPDATE SUCCESS"
-            );
-
-
-            console.log(
-                JSON.stringify(
-                    result,
-                    null,
-                    2
-                )
-            );
-
-
-            await logTransaction({
-
-                transactionId:
-                    messageSid ||
-                    generateTransactionId(),
-
-                contactKey,
-
-                mobileNumber,
-
-                message:
-                    body,
-
-                status:
-                    "OPTED_OUT",
-
-                reason:
-                    "TWILIO_STOP",
-
-                twilioMessageSid:
-                    messageSid,
-
-                consentStatus:
-                    "OPTED_OUT"
-
-            });
-
-
-            res.type(
-                "text/xml"
-            );
 
 
             return res
                 .status(200)
-                .send(
+                .json({
 
-                    "<?xml version=\"1.0\" " +
-                    "encoding=\"UTF-8\"?>" +
+                    found:
+                        true,
 
-                    "<Response></Response>"
+                    mobileNumber:
+                        normalized,
 
-                );
+                    sfmcMobileNumber:
+                        cleanMobileForSFMC(
+                            normalized
+                        ),
+
+                    consent:
+                        record
+
+                });
 
         }
 
         catch (error) {
 
-            console.error(
-                "TWILIO INBOUND ERROR:",
-                error
-            );
-
-
-            res.type(
-                "text/xml"
-            );
-
-
             return res
-                .status(200)
-                .send(
+                .status(500)
+                .json({
 
-                    "<?xml version=\"1.0\" " +
-                    "encoding=\"UTF-8\"?>" +
+                    found:
+                        false,
 
-                    "<Response></Response>"
+                    error:
+                        error.message
 
-                );
+                });
+
         }
+
     }
 );
 
 
 // =========================================================
-// OPT-IN API
+// OPT-IN
 // =========================================================
 
 app.post(
     "/consent/optin",
-
     async (req, res) => {
 
         try {
@@ -3362,6 +2362,7 @@ app.post(
                             "UNAUTHORIZED"
 
                     });
+
             }
 
 
@@ -3391,18 +2392,19 @@ app.post(
                             "MISSING_MOBILE_NUMBER"
 
                     });
+
             }
 
 
-            const normalizedPhone =
+            const normalized =
                 normalizePhone(
                     mobileNumber
                 );
 
 
-            const sfmcMobileNumber =
+            const cleanNumber =
                 cleanMobileForSFMC(
-                    normalizedPhone
+                    normalized
                 );
 
 
@@ -3410,11 +2412,10 @@ app.post(
                 await optIn({
 
                     contactKey:
-                        contactKey ||
-                        "",
+                        contactKey || "",
 
                     mobileNumber:
-                        sfmcMobileNumber,
+                        cleanNumber,
 
                     source:
                         source ||
@@ -3435,11 +2436,10 @@ app.post(
                         "success",
 
                     contactKey:
-                        contactKey ||
-                        "",
+                        contactKey || "",
 
                     mobileNumber:
-                        sfmcMobileNumber,
+                        cleanNumber,
 
                     result
 
@@ -3469,7 +2469,9 @@ app.post(
                         error.message
 
                 });
+
         }
+
     }
 );
 
@@ -3492,16 +2494,16 @@ app.use(
                     req.originalUrl
 
             });
+
     }
 );
 
 
 // =========================================================
-// GLOBAL ERROR HANDLER
+// GLOBAL ERROR
 // =========================================================
 
 app.use(
-
     (
         error,
         req,
@@ -3522,6 +2524,7 @@ app.use(
             return next(
                 error
             );
+
         }
 
 
@@ -3536,18 +2539,17 @@ app.use(
                     error.message
 
             });
+
     }
 );
 
 
 // =========================================================
-// START SERVER
+// START
 // =========================================================
 
 app.listen(
-
     PORT,
-
     () => {
 
         console.log(
@@ -3567,27 +2569,19 @@ app.listen(
         );
 
         console.log(
-            `Health URL: ${PUBLIC_BASE_URL}/health`
+            `Health: ${PUBLIC_BASE_URL}/health`
         );
 
         console.log(
-            `Twilio Webhook: ${PUBLIC_BASE_URL}/twilio/inbound`
+            `Execute: ${PUBLIC_BASE_URL}/execute`
         );
 
         console.log(
-            `Transaction Log Test: ${PUBLIC_BASE_URL}/debug/transaction-log`
+            `Event Fields: ${PUBLIC_BASE_URL}/event-fields`
         );
 
         console.log(
-            `Journey Fields: ${PUBLIC_BASE_URL}/fields`
-        );
-
-        console.log(
-            "Consent lookup: MOBILE NUMBER"
-        );
-
-        console.log(
-            "SOAP authentication: OAuth fueloauth"
+            `Transaction Test: ${PUBLIC_BASE_URL}/debug/transaction-log`
         );
 
         console.log(
