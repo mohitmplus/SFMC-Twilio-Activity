@@ -1,10 +1,14 @@
-const connection = new Postmonger.Session();
+const connection =
+    new Postmonger.Session();
+
 
 let payload = {};
+
 let eventDefinitionKey = "";
+
 let eventSchema = [];
 
-let messageTextarea;
+let variableCounter = 0;
 
 
 /*
@@ -15,32 +19,51 @@ let messageTextarea;
 
 $(document).ready(function () {
 
-    messageTextarea = $("#smsMessage");
-
-    /*
-     * Tell Journey Builder that the custom activity is ready.
-     */
-    connection.trigger("ready");
-
-    /*
-     * Request the current Journey.
-     */
-    connection.trigger("requestInteraction");
-
-    /*
-     * Request the Entry Event schema.
-     *
-     * This is the important part.
-     *
-     * Journey Builder will respond with:
-     *
-     * requestedSchema
-     */
-    connection.trigger("requestSchema");
-
     console.log(
-        "Requested Journey Entry Event schema"
+        "Twilio Custom Activity loading..."
     );
+
+
+    /*
+     * Tell Journey Builder the iframe
+     * is ready.
+     */
+
+    connection.trigger(
+        "ready"
+    );
+
+
+    /*
+     * Get current journey.
+     */
+
+    connection.trigger(
+        "requestInteraction"
+    );
+
+
+    /*
+     * Get the Entry Event Definition.
+     */
+
+    connection.trigger(
+        "requestTriggerEventDefinition"
+    );
+
+
+    /*
+     * Ask Journey Builder for schema.
+     *
+     * This is important because we DO NOT
+     * hard-code fields such as FirstName,
+     * LastName, Phone, etc.
+     */
+
+    connection.trigger(
+        "requestSchema"
+    );
+
 });
 
 
@@ -59,6 +82,10 @@ connection.on(
             interaction
         );
 
+
+        /*
+         * Find Event Definition Key.
+         */
 
         if (
             interaction &&
@@ -85,8 +112,75 @@ connection.on(
                     "Event Definition Key:",
                     eventDefinitionKey
                 );
+
             }
+
         }
+
+    }
+);
+
+
+/*
+|--------------------------------------------------------------------------
+| GET TRIGGER EVENT DEFINITION
+|--------------------------------------------------------------------------
+*/
+
+connection.on(
+    "requestedTriggerEventDefinition",
+    function (eventDefinition) {
+
+        console.log(
+            "Trigger Event Definition:",
+            eventDefinition
+        );
+
+
+        /*
+         * Some Journey Builder configurations
+         * provide the eventDefinitionKey here.
+         */
+
+        if (
+            eventDefinition
+        ) {
+
+            if (
+                eventDefinition
+                    .metaData &&
+                eventDefinition
+                    .metaData
+                    .eventDefinitionKey
+            ) {
+
+                eventDefinitionKey =
+                    eventDefinition
+                        .metaData
+                        .eventDefinitionKey;
+
+            }
+
+
+            if (
+                eventDefinition
+                    .eventDefinitionKey
+            ) {
+
+                eventDefinitionKey =
+                    eventDefinition
+                        .eventDefinitionKey;
+
+            }
+
+        }
+
+
+        console.log(
+            "Final Event Definition Key:",
+            eventDefinitionKey
+        );
+
     }
 );
 
@@ -95,11 +189,6 @@ connection.on(
 |--------------------------------------------------------------------------
 | GET ENTRY EVENT SCHEMA
 |--------------------------------------------------------------------------
-|
-| Journey Builder returns the fields available from the
-| Entry Event / Data Extension.
-|
-|--------------------------------------------------------------------------
 */
 
 connection.on(
@@ -107,87 +196,625 @@ connection.on(
     function (schema) {
 
         console.log(
-            "================================================"
-        );
-
-        console.log(
-            "JOURNEY ENTRY EVENT SCHEMA RECEIVED"
-        );
-
-        console.log(
-            JSON.stringify(
-                schema,
-                null,
-                2
-            )
-        );
-
-        console.log(
-            "================================================"
+            "Journey Entry Schema received:",
+            schema
         );
 
 
-        try {
-
-            /*
-             * Different Journey Builder versions can return
-             * the schema slightly differently.
-             */
-
-            let fields = [];
-
-
-            if (
-                schema &&
-                Array.isArray(
-                    schema.schema
-                )
-            ) {
-
-                fields =
-                    schema.schema;
-
-            }
-
-            else if (
-                schema &&
-                schema.schema &&
-                Array.isArray(
-                    schema.schema.schema
-                )
-            ) {
-
-                fields =
-                    schema.schema.schema;
-
-            }
-
-
-            eventSchema =
-                fields || [];
-
-
-            console.log(
-                "Available Entry Event Fields:",
-                eventSchema
+        eventSchema =
+            extractSchemaFields(
+                schema
             );
 
 
-            populateVariableFields();
+        console.log(
+            "Extracted Journey Fields:",
+            eventSchema
+        );
 
 
-        }
+        renderSchemaStatus();
 
-        catch (error) {
+        refreshVariableDropdowns();
 
-            console.error(
-                "Unable to process Journey schema:",
-                error
-            );
-
-        }
     }
 );
+
+
+/*
+|--------------------------------------------------------------------------
+| EXTRACT SCHEMA FIELDS
+|--------------------------------------------------------------------------
+*/
+
+function extractSchemaFields(
+    schema
+) {
+
+    const fields = [];
+
+    /*
+     * Prevent duplicates.
+     */
+
+    const seen = {};
+
+
+    /*
+     * Journey Builder commonly returns
+     * schema as an object containing
+     * a schema array.
+     */
+
+    let schemaItems = [];
+
+
+    if (
+        Array.isArray(schema)
+    ) {
+
+        schemaItems =
+            schema;
+
+    }
+
+    else if (
+        schema &&
+        Array.isArray(
+            schema.schema
+        )
+    ) {
+
+        schemaItems =
+            schema.schema;
+
+    }
+
+    else if (
+        schema &&
+        Array.isArray(
+            schema.data
+        )
+    ) {
+
+        schemaItems =
+            schema.data;
+
+    }
+
+    else if (
+        schema &&
+        schema.schema &&
+        Array.isArray(
+            schema.schema.fields
+        )
+    ) {
+
+        schemaItems =
+            schema.schema.fields;
+
+    }
+
+
+    /*
+     * Extract every schema item.
+     */
+
+    schemaItems.forEach(
+        function (item) {
+
+            if (!item) {
+                return;
+            }
+
+
+            /*
+             * Different Journey Builder
+             * schema responses can expose
+             * the field key differently.
+             */
+
+            const key =
+                item.key ||
+                item.Key ||
+                item.name ||
+                item.fieldName ||
+                "";
+
+
+            if (!key) {
+                return;
+            }
+
+
+            /*
+             * We need the actual Journey
+             * data-binding path.
+             *
+             * Example:
+             *
+             * Event.DEAudience-xxx.FirstName
+             */
+
+            let binding = key;
+
+
+            /*
+             * If key already contains Event.,
+             * use it directly.
+             */
+
+            if (
+                !binding.startsWith(
+                    "{{"
+                )
+            ) {
+
+                if (
+                    binding.startsWith(
+                        "Event."
+                    )
+                ) {
+
+                    binding =
+                        "{{" +
+                        binding +
+                        "}}";
+
+                }
+
+            }
+
+
+            /*
+             * Extract a friendly field name.
+             */
+
+            let fieldName =
+                item.name ||
+                item.fieldName ||
+                "";
+
+
+            /*
+             * If no friendly name exists,
+             * derive it from the key.
+             */
+
+            if (!fieldName) {
+
+                const parts =
+                    key.split(
+                        "."
+                    );
+
+                fieldName =
+                    parts[
+                        parts.length - 1
+                    ];
+
+            }
+
+
+            /*
+             * Only add valid values.
+             */
+
+            if (
+                fieldName &&
+                binding
+            ) {
+
+                const uniqueKey =
+                    fieldName +
+                    "|" +
+                    binding;
+
+
+                if (
+                    !seen[
+                        uniqueKey
+                    ]
+                ) {
+
+                    seen[
+                        uniqueKey
+                    ] = true;
+
+
+                    fields.push({
+
+                        name:
+                            fieldName,
+
+                        key:
+                            key,
+
+                        binding:
+                            binding,
+
+                        type:
+                            item.type ||
+                            ""
+
+                    });
+
+                }
+
+            }
+
+        }
+    );
+
+
+    return fields;
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| RENDER SCHEMA STATUS
+|--------------------------------------------------------------------------
+*/
+
+function renderSchemaStatus() {
+
+    const status =
+        $("#schemaStatus");
+
+
+    if (
+        eventSchema.length > 0
+    ) {
+
+        status
+            .text(
+                eventSchema.length +
+                " Journey Entry fields available."
+            )
+            .removeClass(
+                "error"
+            )
+            .addClass(
+                "success"
+            );
+
+        return;
+    }
+
+
+    status
+        .text(
+            "No Journey Entry fields were returned. Make sure the Journey Entry Event has a Data Extension schema."
+        )
+        .removeClass(
+            "success"
+        )
+        .addClass(
+            "error"
+        );
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| ADD VARIABLE
+|--------------------------------------------------------------------------
+*/
+
+$("#addVariable").on(
+    "click",
+    function () {
+
+        variableCounter++;
+
+
+        const variableName =
+            "Variable" +
+            variableCounter;
+
+
+        addVariableRow(
+            variableName
+        );
+
+    }
+);
+
+
+/*
+|--------------------------------------------------------------------------
+| ADD VARIABLE ROW
+|--------------------------------------------------------------------------
+*/
+
+function addVariableRow(
+    variableName
+) {
+
+    const rowId =
+        "variable-" +
+        Date.now() +
+        "-" +
+        variableCounter;
+
+
+    const row =
+        $(`
+            <div
+                class="variable-row"
+                data-row-id="${rowId}"
+            >
+
+                <div>
+
+                    <div class="variable-label">
+                        Variable
+                    </div>
+
+                    <input
+                        type="text"
+                        class="variable-name"
+                        value="${escapeHtml(variableName)}"
+                        placeholder="FirstName"
+                    >
+
+                </div>
+
+
+                <div>
+
+                    <div class="variable-label">
+                        Journey Entry Field
+                    </div>
+
+                    <select
+                        class="variable-field"
+                    >
+
+                        <option value="">
+                            Select field...
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+                <button
+                    type="button"
+                    class="remove-variable"
+                    title="Remove variable"
+                >
+                    ×
+                </button>
+
+            </div>
+        `);
+
+
+    $("#variableRows")
+        .append(
+            row
+        );
+
+
+    /*
+     * Populate fields.
+     */
+
+    populateFieldDropdown(
+        row.find(
+            ".variable-field"
+        )
+    );
+
+
+    /*
+     * When user changes the field,
+     * automatically suggest the variable
+     * name.
+     */
+
+    row.find(
+        ".variable-field"
+    ).on(
+        "change",
+        function () {
+
+            const selected =
+                $(this)
+                    .find(
+                        "option:selected"
+                    )
+                    .data(
+                        "fieldName"
+                    );
+
+
+            const input =
+                row.find(
+                    ".variable-name"
+                );
+
+
+            /*
+             * Only auto-fill when the user
+             * hasn't manually changed it.
+             */
+
+            if (
+                selected &&
+                (
+                    !input.val() ||
+                    input.val()
+                        .startsWith(
+                            "Variable"
+                        )
+                )
+            ) {
+
+                input.val(
+                    sanitizeVariableName(
+                        selected
+                    )
+                );
+
+            }
+
+
+            updatePreview();
+
+        }
+    );
+
+
+    /*
+     * Variable name changes.
+     */
+
+    row.find(
+        ".variable-name"
+    ).on(
+        "input",
+        function () {
+
+            updatePreview();
+
+        }
+    );
+
+
+    /*
+     * Remove row.
+     */
+
+    row.find(
+        ".remove-variable"
+    ).on(
+        "click",
+        function () {
+
+            row.remove();
+
+            updatePreview();
+
+        }
+    );
+
+
+    updatePreview();
+
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| POPULATE FIELD DROPDOWN
+|--------------------------------------------------------------------------
+*/
+
+function populateFieldDropdown(
+    select
+) {
+
+    select.empty();
+
+
+    select.append(
+        $("<option>")
+            .val("")
+            .text(
+                "Select field..."
+            )
+    );
+
+
+    eventSchema.forEach(
+        function (field) {
+
+            const option =
+                $("<option>")
+                    .val(
+                        field.binding
+                    )
+                    .text(
+                        field.name
+                    );
+
+
+            option.attr(
+                "data-field-name",
+                field.name
+            );
+
+
+            option.data(
+                "fieldName",
+                field.name
+            );
+
+
+            option.data(
+                "binding",
+                field.binding
+            );
+
+
+            select.append(
+                option
+            );
+
+        }
+    );
+
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| REFRESH ALL DROPDOWNS
+|--------------------------------------------------------------------------
+*/
+
+function refreshVariableDropdowns() {
+
+    $(".variable-field")
+        .each(
+            function () {
+
+                const select =
+                    $(this);
+
+
+                const previous =
+                    select.val();
+
+
+                populateFieldDropdown(
+                    select
+                );
+
+
+                /*
+                 * Restore previous selection
+                 * if it still exists.
+                 */
+
+                if (
+                    previous
+                ) {
+
+                    select.val(
+                        previous
+                    );
+
+                }
+
+            }
+        );
+
+}
 
 
 /*
@@ -210,6 +837,7 @@ connection.on(
 
             payload =
                 data;
+
         }
 
 
@@ -223,41 +851,161 @@ connection.on(
 
 
             if (
-                Array.isArray(
+                !Array.isArray(
                     inArguments
                 )
             ) {
 
-                const messageArg =
-                    inArguments.find(
-                        item =>
-                            item &&
-                            Object.prototype.hasOwnProperty
-                                .call(
-                                    item,
-                                    "message"
-                                )
-                    );
+                return;
+
+            }
 
 
-                if (
-                    messageArg &&
-                    messageArg.message !== undefined
-                ) {
+            /*
+             * Find message.
+             */
 
-                    $("#smsMessage")
-                        .val(
-                            messageArg.message
-                        )
-                        .trigger("input");
+            const messageArg =
+                inArguments.find(
+                    item =>
+                        item &&
+                        Object.prototype
+                            .hasOwnProperty
+                            .call(
+                                item,
+                                "message"
+                            )
+                );
 
 
-                    console.log(
-                        "Existing SMS message loaded:",
+            if (
+                messageArg &&
+                messageArg.message !==
+                    undefined
+            ) {
+
+                $("#smsMessage")
+                    .val(
                         messageArg.message
                     );
-                }
+
             }
+
+
+            /*
+             * Rebuild variable rows
+             * from saved arguments.
+             *
+             * We ignore:
+             *
+             * contactKey
+             * phoneNumber
+             * message
+             *
+             * Everything else is considered
+             * a personalization variable.
+             */
+
+            inArguments.forEach(
+                function (item) {
+
+                    if (
+                        !item ||
+                        typeof item !==
+                            "object"
+                    ) {
+
+                        return;
+
+                    }
+
+
+                    const keys =
+                        Object.keys(
+                            item
+                        );
+
+
+                    if (
+                        keys.length !== 1
+                    ) {
+
+                        return;
+
+                    }
+
+
+                    const variable =
+                        keys[0];
+
+
+                    if (
+                        variable ===
+                            "contactKey" ||
+                        variable ===
+                            "phoneNumber" ||
+                        variable ===
+                            "message"
+                    ) {
+
+                        return;
+
+                    }
+
+
+                    const binding =
+                        item[
+                            variable
+                        ];
+
+
+                    if (
+                        typeof binding !==
+                            "string"
+                    ) {
+
+                        return;
+
+                    }
+
+
+                    variableCounter++;
+
+
+                    addVariableRow(
+                        variable
+                    );
+
+
+                    const lastRow =
+                        $("#variableRows")
+                            .children()
+                            .last();
+
+
+                    lastRow
+                        .find(
+                            ".variable-name"
+                        )
+                        .val(
+                            variable
+                        );
+
+
+                    lastRow
+                        .find(
+                            ".variable-field"
+                        )
+                        .val(
+                            binding
+                        );
+
+                }
+            );
+
+
+            updatePreview();
+
 
         }
 
@@ -267,448 +1015,11 @@ connection.on(
                 "Unable to load existing activity:",
                 error
             );
-        }
-    }
-);
-
-
-/*
-|--------------------------------------------------------------------------
-| POPULATE VARIABLE DROPDOWN
-|--------------------------------------------------------------------------
-*/
-
-function populateVariableFields() {
-
-    const container =
-        $("#variableContainer");
-
-
-    if (
-        !container.length
-    ) {
-
-        console.error(
-            "variableContainer not found in HTML"
-        );
-
-        return;
-    }
-
-
-    /*
-     * Remove old rows.
-     *
-     * We keep the Add Variable button.
-     */
-
-    container
-        .find(".variable-row")
-        .remove();
-
-
-    console.log(
-        "Building variable picker..."
-    );
-
-
-    if (
-        !eventSchema ||
-        eventSchema.length === 0
-    ) {
-
-        console.warn(
-            "No Entry Event fields received from Journey Builder"
-        );
-
-
-        addVariableRow(
-            []
-        );
-
-        return;
-    }
-
-
-    /*
-     * Build clean field list.
-     */
-
-    const fields =
-        eventSchema
-            .map(
-                function (field) {
-
-                    /*
-                     * Journey Builder normally provides:
-                     *
-                     * key:
-                     * Event.EventKey.FieldName
-                     *
-                     * name:
-                     * FieldName
-                     */
-
-                    const key =
-                        field.key ||
-                        "";
-
-
-                    const name =
-                        field.name ||
-                        extractFieldName(
-                            key
-                        );
-
-
-                    if (!key) {
-
-                        return null;
-                    }
-
-
-                    return {
-
-                        key,
-                        name
-
-                    };
-
-                }
-            )
-            .filter(
-                Boolean
-            );
-
-
-    console.log(
-        "Variable picker fields:",
-        fields
-    );
-
-
-    addVariableRow(
-        fields
-    );
-}
-
-
-/*
-|--------------------------------------------------------------------------
-| ADD VARIABLE ROW
-|--------------------------------------------------------------------------
-*/
-
-function addVariableRow(
-    fields
-) {
-
-    const container =
-        $("#variableContainer");
-
-
-    const row =
-        $(`
-            <div class="variable-row">
-
-                <select class="variable-field">
-
-                    <option value="">
-                        Select field
-                    </option>
-
-                </select>
-
-                <button
-                    type="button"
-                    class="insert-variable"
-                >
-                    Insert
-                </button>
-
-                <button
-                    type="button"
-                    class="remove-variable"
-                >
-                    Remove
-                </button>
-
-            </div>
-        `);
-
-
-    const select =
-        row.find(
-            ".variable-field"
-        );
-
-
-    /*
-     * Add fields to dropdown.
-     */
-
-    fields.forEach(
-        function (field) {
-
-            select.append(
-
-                $("<option>", {
-
-                    value:
-                        field.key,
-
-                    text:
-                        field.name
-
-                })
-
-            );
 
         }
-    );
 
-
-    container.append(
-        row
-    );
-
-
-    /*
-     * Insert button.
-     */
-
-    row.find(
-        ".insert-variable"
-    )
-        .on(
-            "click",
-            function () {
-
-                const fieldKey =
-                    select.val();
-
-
-                if (!fieldKey) {
-
-                    alert(
-                        "Please select a field."
-                    );
-
-                    return;
-                }
-
-
-                insertVariableIntoMessage(
-                    fieldKey
-                );
-            }
-        );
-
-
-    /*
-     * Remove button.
-     */
-
-    row.find(
-        ".remove-variable"
-    )
-        .on(
-            "click",
-            function () {
-
-                row.remove();
-
-            }
-        );
-}
-
-
-/*
-|--------------------------------------------------------------------------
-| + ADD VARIABLE BUTTON
-|--------------------------------------------------------------------------
-*/
-
-$(document).on(
-    "click",
-    "#addVariable",
-    function () {
-
-        console.log(
-            "Add Variable clicked"
-        );
-
-
-        /*
-         * Rebuild fields from the schema.
-         */
-
-        const fields =
-            eventSchema
-                .map(
-                    function (field) {
-
-                        const key =
-                            field.key ||
-                            "";
-
-                        const name =
-                            field.name ||
-                            extractFieldName(
-                                key
-                            );
-
-
-                        if (!key) {
-
-                            return null;
-                        }
-
-
-                        return {
-
-                            key,
-                            name
-
-                        };
-
-                    }
-                )
-                .filter(
-                    Boolean
-                );
-
-
-        addVariableRow(
-            fields
-        );
     }
 );
-
-
-/*
-|--------------------------------------------------------------------------
-| INSERT VARIABLE INTO SMS MESSAGE
-|--------------------------------------------------------------------------
-*/
-
-function insertVariableIntoMessage(
-    fieldKey
-) {
-
-    const textarea =
-        document.getElementById(
-            "smsMessage"
-        );
-
-
-    if (!textarea) {
-
-        console.error(
-            "smsMessage textarea not found"
-        );
-
-        return;
-    }
-
-
-    /*
-     * The fieldKey returned by Journey Builder
-     * is already in the correct format:
-     *
-     * Event.DEAudience-xxx.FirstName
-     *
-     * We only need to wrap it.
-     */
-
-    const token =
-        "{{" +
-        fieldKey +
-        "}}";
-
-
-    const start =
-        textarea.selectionStart;
-
-
-    const end =
-        textarea.selectionEnd;
-
-
-    const currentValue =
-        textarea.value;
-
-
-    /*
-     * Insert at cursor position.
-     */
-
-    textarea.value =
-        currentValue.substring(
-            0,
-            start
-        ) +
-
-        token +
-
-        currentValue.substring(
-            end
-        );
-
-
-    /*
-     * Put cursor immediately after
-     * inserted variable.
-     */
-
-    const newPosition =
-        start +
-        token.length;
-
-
-    textarea.focus();
-
-
-    textarea.setSelectionRange(
-        newPosition,
-        newPosition
-    );
-
-
-    console.log(
-        "Inserted variable:",
-        token
-    );
-}
-
-
-/*
-|--------------------------------------------------------------------------
-| EXTRACT FIELD NAME
-|--------------------------------------------------------------------------
-*/
-
-function extractFieldName(
-    key
-) {
-
-    if (!key) {
-
-        return "";
-    }
-
-
-    const parts =
-        key.split(".");
-
-
-    return (
-        parts[
-            parts.length - 1
-        ] ||
-        key
-    );
-}
 
 
 /*
@@ -734,20 +1045,140 @@ connection.on(
             );
 
             return;
+
         }
 
 
         /*
-         * Phone binding
+         * Validate variables.
+         */
+
+        const variables =
+            [];
+
+
+        let invalidVariable =
+            false;
+
+
+        $("#variableRows")
+            .find(
+                ".variable-row"
+            )
+            .each(
+                function () {
+
+                    const row =
+                        $(this);
+
+
+                    const variableName =
+                        row.find(
+                            ".variable-name"
+                        )
+                        .val()
+                        .trim();
+
+
+                    const binding =
+                        row.find(
+                            ".variable-field"
+                        )
+                        .val();
+
+
+                    if (
+                        !variableName &&
+                        !binding
+                    ) {
+
+                        return;
+
+                    }
+
+
+                    if (
+                        !variableName
+                    ) {
+
+                        alert(
+                            "Please enter a variable name."
+                        );
+
+                        invalidVariable =
+                            true;
+
+                        return false;
+
+                    }
+
+
+                    if (
+                        !binding
+                    ) {
+
+                        alert(
+                            "Please select a Journey Entry field for " +
+                            variableName
+                        );
+
+                        invalidVariable =
+                            true;
+
+                        return false;
+
+                    }
+
+
+                    /*
+                     * Variable names must be safe.
+                     *
+                     * Example:
+                     *
+                     * FirstName
+                     * OrderNumber
+                     * CustomerName
+                     */
+
+                    const cleanName =
+                        sanitizeVariableName(
+                            variableName
+                        );
+
+
+                    variables.push({
+
+                        name:
+                            cleanName,
+
+                        binding:
+                            binding
+
+                    });
+
+                }
+            );
+
+
+        if (
+            invalidVariable
+        ) {
+
+            return;
+
+        }
+
+
+        /*
+         * Phone binding.
+         *
+         * We retain your existing dynamic
+         * Journey Entry phone field.
          */
 
         let dynamicPhoneBinding =
             "{{Context.DefaultMobileNumber}}";
 
-
-        /*
-         * Event phone field
-         */
 
         if (
             eventDefinitionKey
@@ -757,11 +1188,12 @@ connection.on(
                 "{{Event." +
                 eventDefinitionKey +
                 ".Phone}}";
+
         }
 
 
         /*
-         * Contact Key
+         * ContactKey.
          */
 
         const contactKeyBinding =
@@ -769,7 +1201,7 @@ connection.on(
 
 
         /*
-         * Make sure arguments exist.
+         * Prepare execute arguments.
          */
 
         payload.arguments =
@@ -782,18 +1214,7 @@ connection.on(
             {};
 
 
-        /*
-         * Save the message exactly as entered.
-         *
-         * Example:
-         *
-         * Hello {{Event.DEAudience-xxx.FirstName}}
-         *
-         * Journey Builder will resolve the token
-         * when the journey executes.
-         */
-
-        payload.arguments.execute.inArguments = [
+        const executeArguments = [
 
             {
                 contactKey:
@@ -814,6 +1235,37 @@ connection.on(
 
 
         /*
+         * Add every personalization variable.
+         *
+         * Example:
+         *
+         * {
+         *   FirstName:
+         *     "{{Event.xxx.FirstName}}"
+         * }
+         */
+
+        variables.forEach(
+            function (variable) {
+
+                executeArguments.push({
+
+                    [variable.name]:
+                        variable.binding
+
+                });
+
+            }
+        );
+
+
+        payload.arguments
+            .execute
+            .inArguments =
+                executeArguments;
+
+
+        /*
          * Mark activity configured.
          */
 
@@ -827,7 +1279,7 @@ connection.on(
 
 
         console.log(
-            "================================================"
+            "=========================================="
         );
 
         console.log(
@@ -843,17 +1295,208 @@ connection.on(
         );
 
         console.log(
-            "================================================"
+            "=========================================="
         );
 
 
         /*
-         * Send configuration back to Journey Builder.
+         * Save activity.
          */
 
         connection.trigger(
             "updateActivity",
             payload
         );
+
     }
 );
+
+
+/*
+|--------------------------------------------------------------------------
+| MESSAGE PREVIEW
+|--------------------------------------------------------------------------
+*/
+
+$("#smsMessage").on(
+    "input",
+    function () {
+
+        updatePreview();
+
+    }
+);
+
+
+/*
+|--------------------------------------------------------------------------
+| UPDATE PREVIEW
+|--------------------------------------------------------------------------
+*/
+
+function updatePreview() {
+
+    const textarea =
+        document.getElementById(
+            "smsMessage"
+        );
+
+
+    const charCount =
+        document.getElementById(
+            "charCount"
+        );
+
+
+    const segmentNote =
+        document.getElementById(
+            "segmentNote"
+        );
+
+
+    const bubble =
+        document.getElementById(
+            "smsBubbleText"
+        );
+
+
+    if (!textarea) {
+        return;
+    }
+
+
+    const message =
+        textarea.value;
+
+
+    const length =
+        message.length;
+
+
+    if (charCount) {
+
+        charCount.textContent =
+            length +
+            "/480";
+
+
+        charCount.classList.toggle(
+            "warn",
+            length > 400
+        );
+
+    }
+
+
+    const segments =
+        Math.max(
+            1,
+            Math.ceil(
+                length / 160
+            )
+        );
+
+
+    if (segmentNote) {
+
+        if (segments === 1) {
+
+            segmentNote.textContent =
+                length === 0
+                    ? "1 segment · fits in a single SMS"
+                    : "1 segment · fits in a single SMS (" +
+                      (160 - length) +
+                      " characters left)";
+
+        }
+
+        else {
+
+            segmentNote.textContent =
+                segments +
+                " segments · message will be split into " +
+                segments +
+                " texts";
+
+        }
+
+    }
+
+
+    if (bubble) {
+
+        bubble.textContent =
+            message ||
+            "Type your text message here...";
+
+    }
+
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| SANITIZE VARIABLE NAME
+|--------------------------------------------------------------------------
+*/
+
+function sanitizeVariableName(
+    value
+) {
+
+    return String(
+        value || ""
+    )
+        .trim()
+        .replace(
+            /[^a-zA-Z0-9_]/g,
+            ""
+        );
+
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| ESCAPE HTML
+|--------------------------------------------------------------------------
+*/
+
+function escapeHtml(
+    value
+) {
+
+    return String(
+        value || ""
+    )
+        .replace(
+            /&/g,
+            "&amp;"
+        )
+        .replace(
+            /</g,
+            "&lt;"
+        )
+        .replace(
+            />/g,
+            "&gt;"
+        )
+        .replace(
+            /"/g,
+            "&quot;"
+        )
+        .replace(
+            /'/g,
+            "&#039;"
+        );
+
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| INITIAL RENDER
+|--------------------------------------------------------------------------
+*/
+
+updatePreview();
