@@ -18,15 +18,12 @@ const {
 
 
 // =========================================================
-// EXPRESS APPLICATION
+// EXPRESS
 // =========================================================
 
 const app = express();
 
-app.set(
-    "trust proxy",
-    true
-);
+app.set("trust proxy", true);
 
 
 // =========================================================
@@ -40,6 +37,7 @@ const JWT_SECRET =
     process.env.JWT_SECRET;
 
 const PUBLIC_BASE_URL =
+    process.env.WEBHOOK_API_URL ||
     process.env.WEBHOOK_BASE_URL ||
     `http://localhost:${PORT}`;
 
@@ -71,13 +69,10 @@ const requiredEnvironmentVariables = [
 
 
 for (
-    const variable of
-    requiredEnvironmentVariables
+    const variable of requiredEnvironmentVariables
 ) {
 
-    if (
-        !process.env[variable]
-    ) {
+    if (!process.env[variable]) {
 
         console.warn(
             `WARNING: ${variable} is not configured`
@@ -101,7 +96,7 @@ app.use(
 
 
 // =========================================================
-// JSON REQUESTS
+// JSON
 // =========================================================
 
 app.use(
@@ -112,7 +107,7 @@ app.use(
 
 
 // =========================================================
-// URL ENCODED REQUESTS
+// URL ENCODED
 // =========================================================
 
 app.use(
@@ -123,7 +118,7 @@ app.use(
 
 
 // =========================================================
-// HEALTH CHECK
+// HEALTH
 // =========================================================
 
 app.get(
@@ -134,8 +129,7 @@ app.get(
             .status(200)
             .json({
 
-                status:
-                    "ok",
+                status: "ok",
 
                 service:
                     "SFMC Twilio Custom Activity",
@@ -168,7 +162,7 @@ app.get(
 
 
 // =========================================================
-// JOURNEY BUILDER - SAVE
+// SAVE
 // =========================================================
 
 app.post(
@@ -203,7 +197,7 @@ app.post(
 
 
 // =========================================================
-// JOURNEY BUILDER - PUBLISH
+// PUBLISH
 // =========================================================
 
 app.post(
@@ -238,7 +232,7 @@ app.post(
 
 
 // =========================================================
-// JOURNEY BUILDER - VALIDATE
+// VALIDATE
 // =========================================================
 
 app.post(
@@ -273,12 +267,10 @@ app.post(
 
 
 // =========================================================
-// NORMALIZE PHONE NUMBER
+// NORMALIZE PHONE
 // =========================================================
 
-function normalizePhone(
-    phone
-) {
+function normalizePhone(phone) {
 
     if (
         phone === undefined ||
@@ -290,8 +282,7 @@ function normalizePhone(
 
 
     let normalized =
-        String(phone)
-            .trim();
+        String(phone).trim();
 
 
     if (!normalized) {
@@ -322,12 +313,10 @@ function normalizePhone(
 
 
 // =========================================================
-// CLEAN MOBILE NUMBER FOR SFMC
+// CLEAN MOBILE FOR SFMC
 // =========================================================
 
-function cleanMobileForSFMC(
-    phone
-) {
+function cleanMobileForSFMC(phone) {
 
     if (
         phone === undefined ||
@@ -357,7 +346,7 @@ function cleanMobileForSFMC(
 
 
 // =========================================================
-// GENERATE TRANSACTION ID
+// TRANSACTION ID
 // =========================================================
 
 function generateTransactionId() {
@@ -370,81 +359,99 @@ function generateTransactionId() {
 // PERSONALIZATION
 // =========================================================
 //
-// Message example:
+// Message:
 //
-// Hello {{FirstName}},
-// your order {{OrderNumber}} is ready.
+// Hello {{FirstName}}, your order {{OrderNumber}} is ready.
 //
-// InArguments:
+// personalization:
 //
 // {
-//     message: "Hello {{FirstName}}, your order {{OrderNumber}} is ready.",
-//     FirstName: "John",
-//     OrderNumber: "ORD123"
+//     FirstName: "Mohit",
+//     OrderNumber: "12345"
 // }
 //
 // Result:
 //
-// Hello John, your order ORD123 is ready.
+// Hello Mohit, your order 12345 is ready.
 //
 // =========================================================
 
 function personalizeMessage(
     template,
-    variables
+    personalization
 ) {
 
-    if (
-        template === undefined ||
-        template === null
-    ) {
-
-        return "";
-    }
-
-
-    let result =
-        String(template);
+    let message =
+        String(template || "");
 
 
     if (
-        !variables ||
-        typeof variables !== "object"
+        !personalization ||
+        typeof personalization !== "object"
     ) {
 
-        return result;
+        return message;
     }
+
+
+    console.log(
+        "================================================"
+    );
+
+    console.log(
+        "PERSONALIZATION START"
+    );
+
+    console.log(
+        "Template:",
+        message
+    );
+
+    console.log(
+        "Personalization:",
+        JSON.stringify(
+            personalization,
+            null,
+            2
+        )
+    );
 
 
     Object.keys(
-        variables
+        personalization
     ).forEach(
         variableName => {
 
             const value =
-                variables[
+                personalization[
                     variableName
                 ];
+
+
+            const safeValue =
+                value === undefined ||
+                value === null
+                    ? ""
+                    : String(value);
 
 
             /*
              * Supports:
              *
              * {{FirstName}}
+             *
              * {{ FirstName }}
              *
              */
 
             const escapedName =
-                String(
-                    variableName
-                ).replace(
+                variableName.replace(
                     /[.*+?^${}()|[\]\\]/g,
                     "\\$&"
                 );
 
 
-            const tokenRegex =
+            const regex =
                 new RegExp(
                     "\\{\\{\\s*" +
                     escapedName +
@@ -453,92 +460,41 @@ function personalizeMessage(
                 );
 
 
-            result =
-                result.replace(
-                    tokenRegex,
-                    value === undefined ||
-                    value === null
-                        ? ""
-                        : String(value)
+            message =
+                message.replace(
+                    regex,
+                    safeValue
                 );
+
+
+            console.log(
+                `Variable ${variableName}:`,
+                safeValue
+            );
         }
     );
 
 
-    return result;
-}
+    console.log(
+        "Personalized Message:",
+        message
+    );
 
+    console.log(
+        "PERSONALIZATION END"
+    );
 
-// =========================================================
-// EXTRACT PERSONALIZATION VARIABLES
-// =========================================================
-//
-// Any inArgument other than:
-//
-// contactKey
-// phoneNumber
-// message
-//
-// is considered a personalization variable.
-//
-// =========================================================
-
-function extractPersonalizationVariables(
-    inArgs
-) {
-
-    const reservedFields = [
-
-        "contactKey",
-        "ContactKey",
-
-        "phoneNumber",
-        "PhoneNumber",
-        "phonenumber",
-
-        "mobileNumber",
-        "MobileNumber",
-        "mobilenumber",
-
-        "message",
-        "Message",
-
-        "smsMessage",
-        "SMSMessage"
-
-    ];
-
-
-    const variables = {};
-
-
-    Object.keys(
-        inArgs || {}
-    ).forEach(
-        key => {
-
-            if (
-                reservedFields.includes(
-                    key
-                )
-            ) {
-
-                return;
-            }
-
-
-            variables[key] =
-                inArgs[key];
-        }
+    console.log(
+        "================================================"
     );
 
 
-    return variables;
+    return message;
 }
 
 
 // =========================================================
-// LOG SMS TRANSACTION TO SFMC
+// LOG TRANSACTION TO SFMC
 // =========================================================
 
 async function logTransaction({
@@ -574,11 +530,20 @@ async function logTransaction({
     );
 
     console.log(
+        "TransactionId:",
+        transactionId
+    );
+
+    console.log(
         "================================================"
     );
 
 
     try {
+
+        // =====================================================
+        // CONFIG
+        // =====================================================
 
         const restBase =
             process.env.SFMC_REST_BASE_URI;
@@ -588,12 +553,12 @@ async function logTransaction({
 
 
         console.log(
-            "SFMC_REST_BASE_URI:",
+            "SFMC REST BASE:",
             restBase || "(MISSING)"
         );
 
         console.log(
-            "SFMC_TRANSACTION_DE_KEY:",
+            "SFMC TRANSACTION DE KEY:",
             deKey || "(MISSING)"
         );
 
@@ -615,11 +580,11 @@ async function logTransaction({
 
 
         // =====================================================
-        // GET SFMC ACCESS TOKEN
+        // TOKEN
         // =====================================================
 
         console.log(
-            "Getting SFMC access token..."
+            "Requesting SFMC access token..."
         );
 
 
@@ -643,12 +608,12 @@ async function logTransaction({
 
 
         console.log(
-            "SFMC access token received successfully"
+            "SFMC access token received"
         );
 
 
         // =====================================================
-        // BUILD REST URL
+        // URL
         // =====================================================
 
         const cleanRestBase =
@@ -659,25 +624,22 @@ async function logTransaction({
 
 
         const url =
-            `${cleanRestBase}` +
-            `/hub/v1/dataevents/key/` +
-            `${encodeURIComponent(
+            cleanRestBase +
+            "/hub/v1/dataevents/key/" +
+            encodeURIComponent(
                 deKey
-            )}` +
-            `/rowset`;
+            ) +
+            "/rowset";
 
 
         console.log(
-            "Transaction Log URL:"
-        );
-
-        console.log(
+            "SFMC Transaction Log URL:",
             url
         );
 
 
         // =====================================================
-        // CREATE PAYLOAD
+        // PAYLOAD
         // =====================================================
 
         const createdDate =
@@ -694,7 +656,6 @@ async function logTransaction({
                         transactionId
 
                 },
-
 
                 values: {
 
@@ -743,11 +704,7 @@ async function logTransaction({
 
 
         console.log(
-            "================================================"
-        );
-
-        console.log(
-            "SFMC TRANSACTION PAYLOAD"
+            "SFMC TRANSACTION PAYLOAD:"
         );
 
         console.log(
@@ -758,13 +715,9 @@ async function logTransaction({
             )
         );
 
-        console.log(
-            "================================================"
-        );
-
 
         // =====================================================
-        // SEND TO SFMC
+        // REQUEST
         // =====================================================
 
         console.log(
@@ -838,8 +791,10 @@ async function logTransaction({
 
             throw new Error(
 
-                `SFMC Transaction Log API failed. ` +
+                "SFMC Transaction Log API failed. " +
+
                 `HTTP ${response.status}. ` +
+
                 `Response: ${responseText}`
 
             );
@@ -909,12 +864,10 @@ async function logTransaction({
 
 
 // =========================================================
-// VERIFY JOURNEY BUILDER JWT
+// VERIFY JOURNEY JWT
 // =========================================================
 
-function verifyJourneyJWT(
-    req
-) {
+function verifyJourneyJWT(req) {
 
     if (!JWT_SECRET) {
 
@@ -941,8 +894,7 @@ function verifyJourneyJWT(
     }
 
     else if (
-        typeof req.body ===
-        "string"
+        typeof req.body === "string"
     ) {
 
         token =
@@ -978,7 +930,7 @@ function verifyJourneyJWT(
 
 
 // =========================================================
-// JOURNEY BUILDER EXECUTE
+// EXECUTE
 // =========================================================
 
 app.post(
@@ -1007,7 +959,7 @@ app.post(
         );
 
         console.log(
-            "JOURNEY BUILDER EXECUTE REQUEST RECEIVED"
+            "JOURNEY BUILDER EXECUTE"
         );
 
         console.log(
@@ -1030,7 +982,7 @@ app.post(
         try {
 
             // =================================================
-            // VERIFY JWT
+            // JWT
             // =================================================
 
             const decoded =
@@ -1040,7 +992,7 @@ app.post(
 
 
             console.log(
-                "Journey Builder JWT verified successfully"
+                "Journey Builder JWT verified"
             );
 
 
@@ -1063,7 +1015,7 @@ app.post(
 
 
             // =================================================
-            // GET IN ARGUMENTS
+            // IN ARGUMENTS
             // =================================================
 
             if (
@@ -1088,23 +1040,12 @@ app.post(
 
 
             console.log(
-                "================================================"
-            );
-
-            console.log(
-                "MERGED IN ARGUMENTS"
-            );
-
-            console.log(
+                "Merged InArguments:",
                 JSON.stringify(
                     inArgs,
                     null,
                     2
                 )
-            );
-
-            console.log(
-                "================================================"
             );
 
 
@@ -1123,7 +1064,7 @@ app.post(
 
 
             // =================================================
-            // MOBILE NUMBER
+            // PHONE
             // =================================================
 
             const rawPhone =
@@ -1152,81 +1093,72 @@ app.post(
             // MESSAGE TEMPLATE
             // =================================================
 
-            const messageTemplate =
+            message =
                 inArgs.message ||
+
+                inArgs.messageTemplate ||
 
                 inArgs.Message ||
 
-                inArgs.smsMessage ||
-
-                inArgs.SMSMessage ||
+                inArgs.MessageTemplate ||
 
                 "";
 
 
             // =================================================
-            // GET PERSONALIZATION VARIABLES
+            // PERSONALIZATION
             // =================================================
 
-            const personalizationVariables =
-                extractPersonalizationVariables(
-                    inArgs
-                );
+            let personalization =
+                inArgs.personalization ||
+                inArgs.Personalization ||
+                {};
 
 
-            console.log(
-                "================================================"
-            );
+            /*
+             * Sometimes the UI can send the variables
+             * as a JSON string.
+             */
 
-            console.log(
-                "PERSONALIZATION VARIABLES"
-            );
+            if (
+                typeof personalization ===
+                "string"
+            ) {
 
-            console.log(
-                JSON.stringify(
-                    personalizationVariables,
-                    null,
-                    2
-                )
-            );
+                try {
 
-            console.log(
-                "================================================"
-            );
+                    personalization =
+                        JSON.parse(
+                            personalization
+                        );
+
+                }
+
+                catch (error) {
+
+                    console.warn(
+                        "Personalization was not valid JSON:",
+                        personalization
+                    );
+
+                    personalization = {};
+                }
+            }
 
 
             // =================================================
-            // PERSONALIZE MESSAGE
+            // APPLY PERSONALIZATION
             // =================================================
+
+            const originalMessage =
+                message;
+
 
             message =
                 personalizeMessage(
-                    messageTemplate,
-                    personalizationVariables
+                    message,
+                    personalization
                 );
-
-
-            console.log(
-                "================================================"
-            );
-
-            console.log(
-                "MESSAGE PERSONALIZATION"
-            );
-
-            console.log(
-                "Template:",
-                messageTemplate
-            );
-
-            console.log(
-                "Final Message:",
-                message
-            );
-
-            console.log(
-                "================================================"
-            );
 
 
             // =================================================
@@ -1257,14 +1189,12 @@ app.post(
             );
 
             console.log(
-                "SFMC Mobile:",
-                cleanMobileForSFMC(
-                    phone
-                ) || "(EMPTY)"
+                "Original Message:",
+                originalMessage || "(EMPTY)"
             );
 
             console.log(
-                "Message:",
+                "Final Message:",
                 message || "(EMPTY)"
             );
 
@@ -1274,7 +1204,7 @@ app.post(
 
 
             // =================================================
-            // CONTACT KEY VALIDATION
+            // CONTACT KEY
             // =================================================
 
             if (!contactKey) {
@@ -1291,7 +1221,7 @@ app.post(
                     contactKey,
 
                     mobileNumber:
-                        phone,
+                        phone || "",
 
                     message,
 
@@ -1321,7 +1251,7 @@ app.post(
 
 
             // =================================================
-            // PHONE VALIDATION
+            // PHONE
             // =================================================
 
             if (!phone) {
@@ -1368,7 +1298,7 @@ app.post(
 
 
             // =================================================
-            // MESSAGE VALIDATION
+            // MESSAGE
             // =================================================
 
             if (
@@ -1429,7 +1359,7 @@ app.post(
 
 
             // =================================================
-            // CONSENT CHECK
+            // CONSENT
             // =================================================
 
             console.log(
@@ -1441,7 +1371,7 @@ app.post(
             );
 
             console.log(
-                "Consent lookup key:",
+                "Mobile:",
                 sfmcMobileNumber
             );
 
@@ -1467,7 +1397,7 @@ app.post(
 
 
             // =================================================
-            // NO CONSENT RECORD
+            // NO CONSENT
             // =================================================
 
             if (!consent) {
@@ -1517,30 +1447,12 @@ app.post(
 
 
             // =================================================
-            // CHECK SMS OPT-IN
+            // OPT-IN
             // =================================================
 
             const isOptedIn =
                 consent.SMSOptIn === true;
 
-
-            console.log(
-                "================================================"
-            );
-
-            console.log(
-                "CONSENT STATUS"
-            );
-
-            console.log(
-                "MobileNumber:",
-                sfmcMobileNumber
-            );
-
-            console.log(
-                "ContactKey:",
-                contactKey
-            );
 
             console.log(
                 "SMSOptIn:",
@@ -1552,19 +1464,11 @@ app.post(
                 isOptedIn
             );
 
-            console.log(
-                "================================================"
-            );
-
-
-            // =================================================
-            // BLOCK OPTED OUT
-            // =================================================
 
             if (!isOptedIn) {
 
                 console.warn(
-                    "SMS BLOCKED - CUSTOMER IS OPTED OUT"
+                    "SMS BLOCKED - OPTED OUT"
                 );
 
 
@@ -1608,20 +1512,19 @@ app.post(
 
 
             // =================================================
-            // CONSENT APPROVED
+            // TWILIO
             // =================================================
+
+            console.log(
+                "================================================"
+            );
 
             console.log(
                 "CONSENT APPROVED"
             );
 
-
-            // =================================================
-            // SEND SMS
-            // =================================================
-
             console.log(
-                "Calling Twilio sendSMS()..."
+                "CALLING TWILIO"
             );
 
             console.log(
@@ -1630,8 +1533,12 @@ app.post(
             );
 
             console.log(
-                "Final SMS:",
+                "Message:",
                 message
+            );
+
+            console.log(
+                "================================================"
             );
 
 
@@ -1650,23 +1557,16 @@ app.post(
 
 
             // =================================================
-            // VERIFY TWILIO RESPONSE
+            // TWILIO RESPONSE
             // =================================================
 
             console.log(
-                "Twilio response received"
-            );
-
-            console.log(
-                "Twilio Message SID:",
-                twilioMessage?.sid ||
-                "(NO SID)"
-            );
-
-            console.log(
-                "Twilio Status:",
-                twilioMessage?.status ||
-                "(UNKNOWN)"
+                "Twilio response:",
+                JSON.stringify(
+                    twilioMessage,
+                    null,
+                    2
+                )
             );
 
 
@@ -1682,7 +1582,7 @@ app.post(
 
 
             // =================================================
-            // SMS SUCCESS
+            // SMS ACCEPTED
             // =================================================
 
             console.log(
@@ -1694,7 +1594,7 @@ app.post(
             );
 
             console.log(
-                "Message SID:",
+                "Twilio SID:",
                 twilioMessage.sid
             );
 
@@ -1704,7 +1604,7 @@ app.post(
 
 
             // =================================================
-            // LOG SUCCESS TO SFMC
+            // LOG SUCCESS
             // =================================================
 
             const logResult =
@@ -1734,30 +1634,33 @@ app.post(
                 });
 
 
-            if (
-                !logResult ||
-                logResult.success !== true
-            ) {
+            // =================================================
+            // LOG RESULT
+            // =================================================
 
-                console.error(
-                    "WARNING: SMS was sent but SFMC transaction logging failed."
-                );
+            console.log(
+                "================================================"
+            );
 
-                console.error(
-                    "TransactionId:",
-                    transactionId
-                );
+            console.log(
+                "FINAL TRANSACTION RESULT"
+            );
 
-                console.error(
-                    "Twilio SID:",
-                    twilioMessage.sid
-                );
+            console.log(
+                JSON.stringify(
+                    logResult,
+                    null,
+                    2
+                )
+            );
 
-            }
+            console.log(
+                "================================================"
+            );
 
 
             // =================================================
-            // RETURN SUCCESS
+            // RESPONSE
             // =================================================
 
             return res
@@ -1773,12 +1676,16 @@ app.post(
                         twilioMessage.sid,
 
                     transactionLog:
-                        logResult?.success
+                        logResult.success
                             ? "success"
-                            : "failed"
+                            : "failed",
+
+                    transactionLogError:
+                        logResult.success
+                            ? ""
+                            : logResult.error
 
                 });
-
 
         }
 
@@ -1799,12 +1706,12 @@ app.post(
 
             console.error(
                 "Error:",
-                error
+                error.message
             );
 
             console.error(
-                "Error Message:",
-                error.message
+                "Stack:",
+                error.stack
             );
 
             console.error(
@@ -1813,7 +1720,7 @@ app.post(
 
 
             // =================================================
-            // LOG ERROR
+            // ERROR LOG
             // =================================================
 
             const logResult =
@@ -1849,7 +1756,7 @@ app.post(
 
 
             console.log(
-                "Error transaction log result:",
+                "Error transaction log:",
                 JSON.stringify(
                     logResult,
                     null,
@@ -1871,7 +1778,12 @@ app.post(
                         "EXECUTE_ERROR",
 
                     message:
-                        error.message
+                        error.message,
+
+                    transactionLog:
+                        logResult.success
+                            ? "success"
+                            : "failed"
 
                 });
         }
@@ -1880,12 +1792,11 @@ app.post(
 
 
 // =========================================================
-// DEBUG - CONSENT BY MOBILE
+// DEBUG CONSENT
 // =========================================================
 
 app.get(
     "/debug/consent",
-
     async (req, res) => {
 
         try {
@@ -1900,8 +1811,7 @@ app.get(
                     .status(400)
                     .json({
 
-                        found:
-                            false,
+                        found: false,
 
                         error:
                             "mobileNumber is required"
@@ -1916,11 +1826,15 @@ app.get(
                 );
 
 
+            const sfmcMobileNumber =
+                cleanMobileForSFMC(
+                    normalizedPhone
+                );
+
+
             const record =
                 await getConsentByMobile(
-                    cleanMobileForSFMC(
-                        normalizedPhone
-                    )
+                    sfmcMobileNumber
                 );
 
 
@@ -1930,16 +1844,12 @@ app.get(
                     .status(404)
                     .json({
 
-                        found:
-                            false,
+                        found: false,
 
                         mobileNumber:
                             normalizedPhone,
 
-                        sfmcMobileNumber:
-                            cleanMobileForSFMC(
-                                normalizedPhone
-                            ),
+                        sfmcMobileNumber,
 
                         message:
                             "No consent record found"
@@ -1952,16 +1862,12 @@ app.get(
                 .status(200)
                 .json({
 
-                    found:
-                        true,
+                    found: true,
 
                     mobileNumber:
                         normalizedPhone,
 
-                    sfmcMobileNumber:
-                        cleanMobileForSFMC(
-                            normalizedPhone
-                        ),
+                    sfmcMobileNumber,
 
                     consent:
                         record
@@ -1982,8 +1888,7 @@ app.get(
                 .status(500)
                 .json({
 
-                    found:
-                        false,
+                    found: false,
 
                     error:
                         error.message
@@ -1995,12 +1900,11 @@ app.get(
 
 
 // =========================================================
-// DEBUG - TRANSACTION LOG
+// DEBUG TRANSACTION LOG
 // =========================================================
 
 app.get(
     "/debug/transaction-log",
-
     async (req, res) => {
 
         const transactionId =
@@ -2078,12 +1982,59 @@ app.get(
 
 
 // =========================================================
+// DEBUG PERSONALIZATION
+// =========================================================
+
+app.get(
+    "/debug/personalization",
+    (req, res) => {
+
+        const template =
+            req.query.template ||
+            "Hello {{FirstName}}, your order {{OrderNumber}} is ready.";
+
+
+        const personalization = {
+
+            FirstName:
+                req.query.FirstName ||
+                "Mohit",
+
+            OrderNumber:
+                req.query.OrderNumber ||
+                "12345"
+
+        };
+
+
+        const result =
+            personalizeMessage(
+                template,
+                personalization
+            );
+
+
+        return res
+            .status(200)
+            .json({
+
+                template,
+
+                personalization,
+
+                result
+
+            });
+    }
+);
+
+
+// =========================================================
 // DEBUG PHONE
 // =========================================================
 
 app.get(
     "/debug/phone",
-
     (req, res) => {
 
         const input =
@@ -2136,13 +2087,10 @@ app.get(
 // VERIFY TWILIO REQUEST
 // =========================================================
 
-function verifyTwilioRequest(
-    req
-) {
+function verifyTwilioRequest(req) {
 
     const authToken =
-        process.env
-            .TWILIO_AUTH_TOKEN;
+        process.env.TWILIO_AUTH_TOKEN;
 
 
     if (!authToken) {
@@ -2170,8 +2118,7 @@ function verifyTwilioRequest(
 
 
     const url =
-        `${PUBLIC_BASE_URL}` +
-        `${req.originalUrl}`;
+        `${PUBLIC_BASE_URL}${req.originalUrl}`;
 
 
     return twilio.validateRequest(
@@ -2193,9 +2140,7 @@ function verifyTwilioRequest(
 // =========================================================
 
 app.post(
-
     "/twilio/inbound",
-
     async (req, res) => {
 
         try {
@@ -2260,17 +2205,17 @@ app.post(
 
 
             console.log(
-                "Twilio From:",
+                "From:",
                 from
             );
 
             console.log(
-                "SFMC MobileNumber:",
+                "Mobile:",
                 mobileNumber
             );
 
             console.log(
-                "SMS Body:",
+                "Body:",
                 body
             );
 
@@ -2310,7 +2255,6 @@ app.post(
 
                         "<?xml version=\"1.0\" " +
                         "encoding=\"UTF-8\"?>" +
-
                         "<Response></Response>"
 
                     );
@@ -2318,7 +2262,7 @@ app.post(
 
 
             console.log(
-                "OPT-OUT REQUEST DETECTED"
+                "OPT-OUT REQUEST"
             );
 
 
@@ -2329,12 +2273,6 @@ app.post(
 
 
             if (!contact) {
-
-                console.warn(
-                    "No consent record found for:",
-                    mobileNumber
-                );
-
 
                 await logTransaction({
 
@@ -2376,7 +2314,6 @@ app.post(
 
                         "<?xml version=\"1.0\" " +
                         "encoding=\"UTF-8\"?>" +
-
                         "<Response></Response>"
 
                     );
@@ -2406,10 +2343,7 @@ app.post(
 
 
             console.log(
-                "SFMC OPT-OUT UPDATE SUCCESS"
-            );
-
-            console.log(
+                "SFMC OPT-OUT RESULT:",
                 JSON.stringify(
                     result,
                     null,
@@ -2457,7 +2391,6 @@ app.post(
 
                     "<?xml version=\"1.0\" " +
                     "encoding=\"UTF-8\"?>" +
-
                     "<Response></Response>"
 
                 );
@@ -2483,7 +2416,6 @@ app.post(
 
                     "<?xml version=\"1.0\" " +
                     "encoding=\"UTF-8\"?>" +
-
                     "<Response></Response>"
 
                 );
@@ -2498,7 +2430,6 @@ app.post(
 
 app.post(
     "/consent/optin",
-
     async (req, res) => {
 
         try {
@@ -2573,8 +2504,7 @@ app.post(
                 await optIn({
 
                     contactKey:
-                        contactKey ||
-                        "",
+                        contactKey || "",
 
                     mobileNumber:
                         sfmcMobileNumber,
@@ -2598,8 +2528,7 @@ app.post(
                         "success",
 
                     contactKey:
-                        contactKey ||
-                        "",
+                        contactKey || "",
 
                     mobileNumber:
                         sfmcMobileNumber,
@@ -2660,11 +2589,10 @@ app.use(
 
 
 // =========================================================
-// GLOBAL ERROR HANDLER
+// GLOBAL ERROR
 // =========================================================
 
 app.use(
-
     (
         error,
         req,
@@ -2704,7 +2632,7 @@ app.use(
 
 
 // =========================================================
-// START SERVER
+// START
 // =========================================================
 
 app.listen(
@@ -2742,11 +2670,11 @@ app.listen(
         );
 
         console.log(
-            "Consent lookup: MOBILE NUMBER"
+            `Personalization Test: ${PUBLIC_BASE_URL}/debug/personalization`
         );
 
         console.log(
-            "Personalization: ENABLED"
+            "Consent lookup: MOBILE NUMBER"
         );
 
         console.log(
