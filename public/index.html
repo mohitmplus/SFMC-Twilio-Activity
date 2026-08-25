@@ -1,14 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-
 <meta charset="UTF-8">
-
 <title>Twilio SMS Configuration</title>
 
 <style>
-
 :root {
     --ink: #1A2B3C;
     --slate: #5B6B7A;
@@ -49,145 +45,91 @@ body {
     min-height: 100%;
 }
 
-.site-header {
+/* HEADER */
 
+.site-header {
     display: flex;
     align-items: center;
     gap: 10px;
-
     padding: 10px 16px;
-
     background: var(--white);
-
-    border-bottom:
-        1px solid var(--hairline);
-
+    border-bottom: 1px solid var(--hairline);
     position: relative;
-
-    flex-shrink: 0;
 }
 
 .header-accent {
-
     position: absolute;
-
     top: 0;
     left: 0;
     right: 0;
-
     height: 3px;
-
-    background:
-        linear-gradient(
-            90deg,
-            var(--ccf-orange) 0%,
-            #FFB25A 100%
-        );
+    background: linear-gradient(
+        90deg,
+        var(--ccf-orange),
+        #FFB25A
+    );
 }
 
 .site-header img {
-
     height: 22px;
-
     width: auto;
-
-    display: block;
 }
 
 .header-divider {
-
     width: 1px;
     height: 16px;
-
-    background:
-        var(--hairline);
+    background: var(--hairline);
 }
 
 .header-title {
-
     font-size: 11.5px;
-
     font-weight: 600;
-
-    color:
-        var(--ccf-navy);
+    color: var(--ccf-navy);
 }
 
+/* BODY */
+
 .body-scroll {
-
     flex: 1;
-
     overflow-y: auto;
-
-    padding:
-        16px 18px 24px;
+    padding: 16px 18px 24px;
 }
 
 .eyebrow {
-
     font-size: 10px;
-
-    letter-spacing: 0.07em;
-
+    letter-spacing: .07em;
     text-transform: uppercase;
-
-    color:
-        var(--ccf-orange);
-
+    color: var(--ccf-orange);
     font-weight: 700;
-
-    margin:
-        0 0 4px;
+    margin: 0 0 4px;
 }
 
 h1 {
-
     font-size: 17px;
-
     font-weight: 700;
-
-    margin:
-        0 0 4px;
-
-    letter-spacing: -0.01em;
+    margin: 0 0 4px;
 }
 
 .subtitle {
-
     font-size: 11.5px;
-
-    color:
-        var(--slate);
-
-    margin:
-        0 0 16px;
-
+    color: var(--slate);
+    margin: 0 0 16px;
     line-height: 1.4;
 }
 
 .block-header {
-
     display: flex;
-
     align-items: center;
-
     gap: 8px;
-
     padding-bottom: 8px;
-
     margin-bottom: 12px;
-
-    border-bottom:
-        1px solid var(--hairline);
+    border-bottom: 1px solid var(--hairline);
 }
 
 .block-icon {
-
     width: 22px;
     height: 22px;
-
     border-radius: 6px;
-
     background:
         linear-gradient(
             135deg,
@@ -196,567 +138,296 @@ h1 {
         );
 
     display: flex;
-
     align-items: center;
-
     justify-content: center;
-
-    flex-shrink: 0;
 }
 
 .block-icon svg {
-
     width: 12px;
     height: 12px;
-
     stroke: white;
 }
 
 .block-header h2 {
-
     font-size: 12.5px;
-
     font-weight: 700;
-
     margin: 0;
 }
 
 .field-group {
-
     margin-bottom: 16px;
 }
 
 label.field-label {
-
     display: block;
-
     font-size: 11.5px;
-
     font-weight: 600;
-
     margin-bottom: 6px;
-
-    color:
-        var(--ink);
 }
 
 textarea {
-
     width: 100%;
-
     font-family: inherit;
-
     font-size: 12.5px;
-
-    padding:
-        9px 11px;
-
-    border:
-        1.5px solid var(--hairline);
-
+    padding: 9px 11px;
+    border: 1.5px solid var(--hairline);
     border-radius: 8px;
-
-    background:
-        var(--white);
-
-    color:
-        var(--ink);
-
-    resize: none;
-
-    height: 90px;
-
+    background: var(--white);
+    color: var(--ink);
+    resize: vertical;
+    min-height: 90px;
     line-height: 1.45;
-
-    transition:
-        border-color 0.15s ease,
-        box-shadow 0.15s ease;
 }
 
 textarea:focus {
-
     outline: none;
-
-    border-color:
-        var(--ccf-blue);
-
+    border-color: var(--ccf-blue);
     box-shadow:
-        0 0 0 3px
-        rgba(0,114,206,0.14);
+        0 0 0 3px rgba(0, 114, 206, .14);
 }
 
 textarea::placeholder {
-
-    color:
-        var(--slate-light);
+    color: var(--slate-light);
 }
 
 .field-footer {
-
     display: flex;
-
-    justify-content:
-        space-between;
-
+    justify-content: space-between;
     margin-top: 5px;
 }
 
 .field-hint {
-
     font-size: 10.5px;
-
-    color:
-        var(--slate);
+    color: var(--slate);
 }
 
 .char-count {
-
     font-size: 10.5px;
-
-    font-variant-numeric:
-        tabular-nums;
-
-    color:
-        var(--slate);
-
     font-weight: 600;
+    color: var(--slate);
 }
 
 .char-count.warn {
-
-    color:
-        var(--ccf-orange);
+    color: var(--ccf-orange);
 }
 
-.segment-note {
+/* VARIABLE PANEL */
 
-    font-size: 10.5px;
-
-    color:
-        var(--slate-light);
-
-    margin-top: 4px;
-}
-
-
-/* VARIABLE SECTION */
-
-.variable-section {
-
-    margin-top: 18px;
-
-    border:
-        1px solid var(--hairline);
-
+.variable-panel {
+    background: var(--white);
+    border: 1px solid var(--hairline);
     border-radius: 10px;
-
-    background:
-        var(--white);
-
     padding: 12px;
+    margin-bottom: 18px;
 }
 
 .variable-header {
-
     display: flex;
-
-    justify-content:
-        space-between;
-
     align-items: center;
-
+    justify-content: space-between;
     margin-bottom: 10px;
 }
 
 .variable-title {
-
-    font-size: 11.5px;
-
+    font-size: 12px;
     font-weight: 700;
-
-    color:
-        var(--ink);
 }
 
-.variable-description {
-
+.variable-help {
     font-size: 10px;
+    color: var(--slate);
+    margin-bottom: 10px;
+}
 
-    color:
-        var(--slate);
+.variable-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 8px;
+}
 
-    margin-top: 2px;
+.variable-name {
+    width: 130px;
+    padding: 8px;
+    border: 1px solid var(--hairline);
+    border-radius: 6px;
+    font-size: 11px;
+}
+
+.variable-field {
+    flex: 1;
+    padding: 8px;
+    border: 1px solid var(--hairline);
+    border-radius: 6px;
+    font-size: 11px;
+    background: white;
+}
+
+.variable-insert {
+    border: 0;
+    border-radius: 6px;
+    background: var(--ccf-blue);
+    color: white;
+    padding: 8px 10px;
+    font-size: 10px;
+    cursor: pointer;
+}
+
+.variable-remove {
+    border: 0;
+    background: transparent;
+    color: #B42318;
+    cursor: pointer;
+    font-size: 16px;
 }
 
 .add-variable-btn {
-
-    border: none;
-
+    border: 1px solid var(--ccf-blue);
+    background: white;
+    color: var(--ccf-blue);
     border-radius: 7px;
-
-    padding:
-        7px 11px;
-
-    background:
-        var(--ccf-blue);
-
-    color:
-        white;
-
-    font-size: 10.5px;
-
-    font-weight: 700;
-
+    padding: 7px 11px;
+    font-size: 11px;
+    font-weight: 600;
     cursor: pointer;
 }
 
 .add-variable-btn:hover {
-
-    opacity: 0.9;
+    background: #F2F8FD;
 }
 
-.variable-row {
-
-    display: grid;
-
-    grid-template-columns:
-        1fr 1fr auto;
-
-    gap: 8px;
-
-    align-items: end;
-
-    padding:
-        9px 0;
-
-    border-top:
-        1px solid var(--hairline);
-}
-
-.variable-label {
-
-    font-size: 9.5px;
-
-    color:
-        var(--slate);
-
-    margin-bottom: 4px;
-}
-
-.variable-name {
-
-    width: 100%;
-
-    padding:
-        7px 8px;
-
-    border:
-        1px solid var(--hairline);
-
-    border-radius: 6px;
-
+.loading {
+    color: var(--slate);
     font-size: 11px;
-
-    background:
-        #F8FAFC;
 }
 
-.variable-field {
-
-    width: 100%;
-
-    padding:
-        7px 8px;
-
-    border:
-        1px solid var(--hairline);
-
-    border-radius: 6px;
-
+.error-message {
+    color: #B42318;
     font-size: 11px;
-
-    background:
-        white;
+    margin-top: 8px;
 }
-
-.remove-variable {
-
-    height: 30px;
-
-    width: 30px;
-
-    border:
-        1px solid #E5E7EB;
-
-    background:
-        white;
-
-    color:
-        #B42318;
-
-    border-radius: 6px;
-
-    cursor: pointer;
-
-    font-weight: 700;
-}
-
-.schema-status {
-
-    font-size: 10px;
-
-    padding:
-        7px 8px;
-
-    margin-bottom: 8px;
-
-    border-radius: 6px;
-
-    background:
-        #F3F6F9;
-
-    color:
-        var(--slate);
-}
-
-.schema-status.success {
-
-    background:
-        #ECFDF3;
-
-    color:
-        #027A48;
-}
-
-.schema-status.error {
-
-    background:
-        #FEF3F2;
-
-    color:
-        #B42318;
-}
-
 
 /* PREVIEW */
 
 .preview-card {
-
-    margin-top: 16px;
-
+    margin-top: 4px;
     border-radius: 12px;
-
     overflow: hidden;
-
     background:
         linear-gradient(
             160deg,
-            var(--ccf-navy-deep) 0%,
-            var(--ccf-navy) 100%
+            var(--ccf-navy-deep),
+            var(--ccf-navy)
         );
 
     box-shadow:
-        0 4px 16px
-        rgba(0,30,60,0.18);
+        0 4px 16px rgba(0,30,60,.18);
 }
 
 .preview-label-row {
-
     display: flex;
-
     align-items: center;
-
-    justify-content:
-        space-between;
-
-    padding:
-        8px 12px 0;
+    justify-content: space-between;
+    padding: 8px 12px 0;
 }
 
 .preview-label {
-
     font-size: 10px;
-
-    letter-spacing: 0.05em;
-
+    letter-spacing: .05em;
     text-transform: uppercase;
-
-    color:
-        rgba(255,255,255,0.55);
-
+    color: rgba(255,255,255,.55);
     font-weight: 700;
 }
 
 .live-pill {
-
     display: flex;
-
     align-items: center;
-
     gap: 5px;
-
-    background:
-        rgba(255,255,255,0.12);
-
+    background: rgba(255,255,255,.12);
     color: white;
-
     font-size: 9.5px;
-
     font-weight: 600;
-
-    padding:
-        3px 8px;
-
+    padding: 3px 8px;
     border-radius: 100px;
-
-    border:
-        1px solid
-        rgba(255,255,255,0.15);
 }
 
 .live-dot {
-
     width: 5px;
     height: 5px;
-
     border-radius: 50%;
-
-    background:
-        #4ADE80;
+    background: #4ADE80;
 }
 
 .preview-thread {
-
-    padding:
-        10px 12px 14px;
+    padding: 10px 12px 14px;
 }
 
 .contact-header {
-
     display: flex;
-
     align-items: center;
-
     gap: 8px;
-
     padding-bottom: 10px;
-
     margin-bottom: 10px;
-
-    border-bottom:
-        1px solid
-        rgba(255,255,255,0.1);
+    border-bottom: 1px solid rgba(255,255,255,.1);
 }
 
 .contact-avatar {
-
     width: 26px;
     height: 26px;
-
     border-radius: 50%;
-
-    background:
-        var(--white);
-
+    background: white;
     padding: 3px;
-
-    display: flex;
-
-    align-items: center;
-
-    justify-content: center;
-
-    flex-shrink: 0;
 }
 
 .contact-avatar img {
-
     width: 100%;
     height: 100%;
-
     object-fit: contain;
 }
 
 .contact-name {
-
     color: white;
-
     font-size: 11.5px;
-
     font-weight: 600;
 }
 
 .contact-sub {
-
-    color:
-        rgba(255,255,255,0.45);
-
+    color: rgba(255,255,255,.45);
     font-size: 9.5px;
-
     margin-top: 1px;
 }
 
 .sms-bubble {
-
     max-width: 85%;
-
-    background:
-        var(--white);
-
-    color:
-        var(--ccf-navy-deep);
-
+    background: white;
+    color: var(--ccf-navy-deep);
     font-size: 12px;
-
     line-height: 1.4;
-
-    padding:
-        8px 11px;
-
-    border-radius:
-        3px 14px 14px 14px;
-
-    border-left:
-        3px solid
-        var(--ccf-orange);
-
+    padding: 8px 11px;
+    border-radius: 3px 14px 14px 14px;
+    border-left: 3px solid var(--ccf-orange);
     word-wrap: break-word;
-
     white-space: pre-wrap;
-
-    box-shadow:
-        0 2px 8px
-        rgba(0,0,0,0.12);
 }
 
 .bubble-timestamp {
-
     font-size: 9.5px;
-
-    color:
-        rgba(255,255,255,0.5);
-
+    color: rgba(255,255,255,.5);
     margin-top: 6px;
 }
-
 </style>
-
 </head>
-
 
 <body>
 
 <div class="app">
-
-
-    <!-- HEADER -->
 
     <div class="site-header">
 
         <div class="header-accent"></div>
 
         <img
-            src="https://www.crohnscolitisfoundation.org/themes/custom/particle/dist/app-drupal/assets/ccf-logo.png?d9e1d0d25ca99f9e50620c56d6d9ba81="
+            src="https://www.crohnscolitisfoundation.org/themes/custom/particle/dist/app-drupal/assets/ccf-logo.png"
             alt="Crohn's & Colitis Foundation"
         >
 
@@ -769,8 +440,6 @@ textarea::placeholder {
     </div>
 
 
-    <!-- BODY -->
-
     <div class="body-scroll">
 
         <p class="eyebrow">
@@ -782,11 +451,9 @@ textarea::placeholder {
         </h1>
 
         <p class="subtitle">
-            Write your message and personalize it with fields from the Journey Entry Event.
+            Create your message and optionally insert personalized Journey Event fields.
         </p>
 
-
-        <!-- MESSAGE -->
 
         <div class="block-header">
 
@@ -799,11 +466,9 @@ textarea::placeholder {
                     stroke-linecap="round"
                     stroke-linejoin="round"
                 >
-
                     <path
                         d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"
                     />
-
                 </svg>
 
             </div>
@@ -833,7 +498,7 @@ textarea::placeholder {
             <div class="field-footer">
 
                 <span class="field-hint">
-                    Use {{VariableName}} inside your message.
+                    Use Add Variable to select Journey Event fields.
                 </span>
 
                 <span
@@ -845,37 +510,22 @@ textarea::placeholder {
 
             </div>
 
-            <div
-                class="segment-note"
-                id="segmentNote"
-            >
-                1 segment · fits in a single SMS
-            </div>
-
         </div>
 
 
-        <!-- VARIABLES -->
+        <!-- VARIABLE PANEL -->
 
-        <div class="variable-section">
+        <div class="variable-panel">
 
             <div class="variable-header">
 
-                <div>
-
-                    <div class="variable-title">
-                        Personalization variables
-                    </div>
-
-                    <div class="variable-description">
-                        Select fields from your Journey Entry Event.
-                    </div>
-
+                <div class="variable-title">
+                    Personalization variables
                 </div>
 
                 <button
                     type="button"
-                    id="addVariable"
+                    id="addVariableBtn"
                     class="add-variable-btn"
                 >
                     + Add Variable
@@ -883,16 +533,29 @@ textarea::placeholder {
 
             </div>
 
-
-            <div
-                id="schemaStatus"
-                class="schema-status"
-            >
-                Loading Journey Entry fields...
+            <div class="variable-help">
+                Enter a variable name such as
+                <strong>FirstName</strong>
+                and select the corresponding field from the Journey Event.
             </div>
 
+            <div
+                id="variableRows"
+            ></div>
 
-            <div id="variableRows"></div>
+            <div
+                id="fieldLoading"
+                class="loading"
+                style="display:none;"
+            >
+                Loading Journey Event fields...
+            </div>
+
+            <div
+                id="fieldError"
+                class="error-message"
+                style="display:none;"
+            ></div>
 
         </div>
 
@@ -925,8 +588,8 @@ textarea::placeholder {
                     <div class="contact-avatar">
 
                         <img
-                            src="https://www.crohnscolitisfoundation.org/themes/custom/particle/dist/app-drupal/assets/ccf-logo.png?d9e1d0d25ca99f9e50620c56d6d9ba81="
-                            alt="Crohn's & Colitis Foundation logo"
+                            src="https://www.crohnscolitisfoundation.org/themes/custom/particle/dist/app-drupal/assets/ccf-logo.png"
+                            alt="Logo"
                         >
 
                     </div>
@@ -946,7 +609,10 @@ textarea::placeholder {
                 </div>
 
 
-                <div class="sms-bubble">
+                <div
+                    class="sms-bubble"
+                    id="smsBubble"
+                >
 
                     <div id="smsBubbleText">
                         Type your text message here...
@@ -956,7 +622,7 @@ textarea::placeholder {
 
 
                 <div class="bubble-timestamp">
-                    Preview
+                    Delivered · now
                 </div>
 
             </div>
@@ -968,21 +634,11 @@ textarea::placeholder {
 </div>
 
 
-<!-- JQuery -->
-
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
-
-
-<!-- Postmonger -->
 
 <script src="https://cdn.jsdelivr.net/npm/postmonger@0.0.16/postmonger.min.js"></script>
 
-
-<!-- Custom Activity -->
-
 <script src="customActivity.js"></script>
 
-
 </body>
-
 </html>
