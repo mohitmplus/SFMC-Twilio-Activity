@@ -1,18 +1,20 @@
 const https = require("https");
 
-let cachedToken = null;
+let cachedAuth = null;
 let tokenExpiresAt = 0;
 
+
+// =========================================================
+// NORMALIZE URL
+// =========================================================
 
 function normalizeBaseUrl(url) {
 
     if (!url) {
-
         throw new Error(
             "SFMC_AUTH_BASE_URI is not configured"
         );
     }
-
 
     return url.endsWith("/")
         ? url
@@ -20,20 +22,20 @@ function normalizeBaseUrl(url) {
 }
 
 
+// =========================================================
+// REQUEST TOKEN
+// =========================================================
+
 function requestToken() {
 
-    return new Promise(
-        (
-            resolve,
-            reject
-        ) => {
+    return new Promise((resolve, reject) => {
+
+        try {
 
             const baseUrl =
                 normalizeBaseUrl(
-                    process.env
-                        .SFMC_AUTH_BASE_URI
+                    process.env.SFMC_AUTH_BASE_URI
                 );
-
 
             const url =
                 new URL(
@@ -41,21 +43,14 @@ function requestToken() {
                     baseUrl
                 );
 
-
             const clientId =
-                process.env
-                    .SFMC_CLIENT_ID;
-
+                process.env.SFMC_CLIENT_ID;
 
             const clientSecret =
-                process.env
-                    .SFMC_CLIENT_SECRET;
+                process.env.SFMC_CLIENT_SECRET;
 
 
-            if (
-                !clientId ||
-                !clientSecret
-            ) {
+            if (!clientId || !clientSecret) {
 
                 return reject(
                     new Error(
@@ -106,16 +101,14 @@ function requestToken() {
 
                     response => {
 
-                        let body =
-                            "";
+                        let body = "";
 
 
                         response.on(
                             "data",
                             chunk => {
 
-                                body +=
-                                    chunk;
+                                body += chunk;
 
                             }
                         );
@@ -139,6 +132,7 @@ function requestToken() {
                                         )
 
                                     );
+
                                 }
 
 
@@ -161,6 +155,7 @@ function requestToken() {
                                             )
 
                                         );
+
                                     }
 
 
@@ -170,9 +165,7 @@ function requestToken() {
 
                                 }
 
-                                catch (
-                                    error
-                                ) {
+                                catch (error) {
 
                                     reject(
 
@@ -204,27 +197,38 @@ function requestToken() {
                 payload
             );
 
-
             request.end();
 
         }
-    );
+
+        catch (error) {
+
+            reject(error);
+
+        }
+
+    });
+
 }
 
 
-async function getAccessToken() {
+// =========================================================
+// GET AUTH DETAILS
+// =========================================================
+
+async function getAuthDetails() {
 
     const now =
         Date.now();
 
 
     if (
-        cachedToken &&
-        now <
-        tokenExpiresAt
+        cachedAuth &&
+        now < tokenExpiresAt
     ) {
 
-        return cachedToken;
+        return cachedAuth;
+
     }
 
 
@@ -232,34 +236,83 @@ async function getAccessToken() {
         await requestToken();
 
 
-    cachedToken =
-        tokenResponse.access_token;
+    cachedAuth = {
+
+        access_token:
+            tokenResponse.access_token,
+
+        rest_instance_url:
+            tokenResponse.rest_instance_url ||
+            process.env.SFMC_REST_BASE_URI,
+
+        soap_instance_url:
+            tokenResponse.soap_instance_url ||
+            process.env.SFMC_SOAP_BASE_URI,
+
+        expires_in:
+            tokenResponse.expires_in
+
+    };
 
 
     const expiresIn =
         Number(
             tokenResponse.expires_in
-        ) ||
-        1080;
+        ) || 1080;
 
 
+    // Refresh before expiration.
     tokenExpiresAt =
         Date.now() +
-        (
-            Math.max(
-                expiresIn - 60,
-                60
-            ) *
-            1000
-        );
+        Math.max(
+            60,
+            expiresIn - 120
+        ) *
+        1000;
 
 
-    return cachedToken;
+    console.log(
+        "SFMC OAuth token generated"
+    );
+
+    console.log(
+        "REST instance:",
+        cachedAuth.rest_instance_url
+    );
+
+    console.log(
+        "SOAP instance:",
+        cachedAuth.soap_instance_url
+    );
+
+
+    return cachedAuth;
+
 }
 
 
+// =========================================================
+// GET ACCESS TOKEN
+// =========================================================
+
+async function getAccessToken() {
+
+    const auth =
+        await getAuthDetails();
+
+    return auth.access_token;
+
+}
+
+
+// =========================================================
+// EXPORT
+// =========================================================
+
 module.exports = {
 
-    getAccessToken
+    getAccessToken,
+
+    getAuthDetails
 
 };
