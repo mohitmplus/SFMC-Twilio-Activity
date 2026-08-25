@@ -1,12 +1,10 @@
 const connection = new Postmonger.Session();
 
 let payload = {};
-
 let eventDefinitionKey = "";
+let eventSchema = [];
 
-let eventFields = [];
-
-let variables = [];
+let messageTextarea;
 
 
 /*
@@ -17,14 +15,32 @@ let variables = [];
 
 $(document).ready(function () {
 
+    messageTextarea = $("#smsMessage");
+
+    /*
+     * Tell Journey Builder that the custom activity is ready.
+     */
     connection.trigger("ready");
 
+    /*
+     * Request the current Journey.
+     */
     connection.trigger("requestInteraction");
 
     /*
-     * Ask Journey Builder for the Event Definition schema.
+     * Request the Entry Event schema.
+     *
+     * This is the important part.
+     *
+     * Journey Builder will respond with:
+     *
+     * requestedSchema
      */
     connection.trigger("requestSchema");
+
+    console.log(
+        "Requested Journey Entry Event schema"
+    );
 });
 
 
@@ -77,7 +93,12 @@ connection.on(
 
 /*
 |--------------------------------------------------------------------------
-| GET EVENT DEFINITION SCHEMA
+| GET ENTRY EVENT SCHEMA
+|--------------------------------------------------------------------------
+|
+| Journey Builder returns the fields available from the
+| Entry Event / Data Extension.
+|
 |--------------------------------------------------------------------------
 */
 
@@ -86,107 +107,74 @@ connection.on(
     function (schema) {
 
         console.log(
-            "Journey Event Schema received:",
-            schema
+            "================================================"
+        );
+
+        console.log(
+            "JOURNEY ENTRY EVENT SCHEMA RECEIVED"
+        );
+
+        console.log(
+            JSON.stringify(
+                schema,
+                null,
+                2
+            )
+        );
+
+        console.log(
+            "================================================"
         );
 
 
         try {
 
-            eventFields = [];
-
-
             /*
-             * Journey Builder schema normally contains
-             * the event fields under schema.schema.
+             * Different Journey Builder versions can return
+             * the schema slightly differently.
              */
 
+            let fields = [];
+
+
             if (
+                schema &&
+                Array.isArray(
+                    schema.schema
+                )
+            ) {
+
+                fields =
+                    schema.schema;
+
+            }
+
+            else if (
                 schema &&
                 schema.schema &&
-                schema.schema.properties
+                Array.isArray(
+                    schema.schema.schema
+                )
             ) {
 
-                const properties =
-                    schema.schema.properties;
+                fields =
+                    schema.schema.schema;
 
-
-                Object.keys(
-                    properties
-                ).forEach(
-                    function (fieldName) {
-
-                        const field =
-                            properties[fieldName];
-
-
-                        eventFields.push({
-
-                            name:
-                                fieldName,
-
-                            label:
-                                field.title ||
-                                fieldName,
-
-                            type:
-                                field.type ||
-                                "string"
-
-                        });
-
-                    }
-                );
             }
 
 
-            /*
-             * Some Journey Builder responses
-             * can contain fields differently.
-             */
-
-            if (
-                eventFields.length === 0 &&
-                schema &&
-                schema.properties
-            ) {
-
-                Object.keys(
-                    schema.properties
-                ).forEach(
-                    function (fieldName) {
-
-                        const field =
-                            schema.properties[fieldName];
-
-
-                        eventFields.push({
-
-                            name:
-                                fieldName,
-
-                            label:
-                                field.title ||
-                                fieldName,
-
-                            type:
-                                field.type ||
-                                "string"
-
-                        });
-
-                    }
-                );
-            }
+            eventSchema =
+                fields || [];
 
 
             console.log(
-                "Available Event DE fields:",
-                eventFields
+                "Available Entry Event Fields:",
+                eventSchema
             );
 
 
-            renderVariableFields();
+            populateVariableFields();
+
 
         }
 
@@ -220,7 +208,8 @@ connection.on(
 
         if (data) {
 
-            payload = data;
+            payload =
+                data;
         }
 
 
@@ -234,117 +223,40 @@ connection.on(
 
 
             if (
-                Array.isArray(inArguments)
+                Array.isArray(
+                    inArguments
+                )
             ) {
 
-
-                /*
-                 * --------------------------------------------------------
-                 * MESSAGE TEMPLATE
-                 * --------------------------------------------------------
-                 */
-
-                const templateArg =
+                const messageArg =
                     inArguments.find(
                         item =>
                             item &&
                             Object.prototype.hasOwnProperty
                                 .call(
                                     item,
-                                    "messageTemplate"
+                                    "message"
                                 )
                     );
 
 
                 if (
-                    templateArg &&
-                    templateArg.messageTemplate !== undefined
+                    messageArg &&
+                    messageArg.message !== undefined
                 ) {
 
                     $("#smsMessage")
                         .val(
-                            templateArg.messageTemplate
+                            messageArg.message
                         )
                         .trigger("input");
 
-                }
 
-                else {
-
-                    /*
-                     * Backward compatibility with
-                     * your existing activity.
-                     */
-
-                    const messageArg =
-                        inArguments.find(
-                            item =>
-                                item &&
-                                Object.prototype.hasOwnProperty
-                                    .call(
-                                        item,
-                                        "message"
-                                    )
-                        );
-
-
-                    if (
-                        messageArg &&
-                        messageArg.message !== undefined
-                    ) {
-
-                        $("#smsMessage")
-                            .val(
-                                messageArg.message
-                            )
-                            .trigger("input");
-
-                    }
-                }
-
-
-                /*
-                 * --------------------------------------------------------
-                 * LOAD SAVED VARIABLES
-                 * --------------------------------------------------------
-                 */
-
-                const variablesArg =
-                    inArguments.find(
-                        item =>
-                            item &&
-                            Object.prototype.hasOwnProperty
-                                .call(
-                                    item,
-                                    "variables"
-                                )
+                    console.log(
+                        "Existing SMS message loaded:",
+                        messageArg.message
                     );
-
-
-                if (
-                    variablesArg &&
-                    Array.isArray(
-                        variablesArg.variables
-                    )
-                ) {
-
-                    variables =
-                        variablesArg.variables.map(
-                            item => ({
-
-                                name:
-                                    item.name || "",
-
-                                field:
-                                    item.field || ""
-
-                            })
-                        );
-
-
-                    renderVariableFields();
                 }
-
             }
 
         }
@@ -362,519 +274,440 @@ connection.on(
 
 /*
 |--------------------------------------------------------------------------
-| EXTRACT VARIABLES FROM MESSAGE
-|--------------------------------------------------------------------------
-|
-| Example:
-|
-| Hi %%FirstName%%, your order %%OrderNumber%%
-|
-| Returns:
-|
-| FirstName
-| OrderNumber
-|
+| POPULATE VARIABLE DROPDOWN
 |--------------------------------------------------------------------------
 */
 
-function extractVariables(
-    message
-) {
+function populateVariableFields() {
 
-    const matches =
-        String(message || "")
-            .match(
-                /%%([A-Za-z0-9_]+)%%/g
-            );
+    const container =
+        $("#variableContainer");
 
 
-    if (!matches) {
+    if (
+        !container.length
+    ) {
 
-        return [];
+        console.error(
+            "variableContainer not found in HTML"
+        );
+
+        return;
     }
 
 
-    const unique =
-        [];
+    /*
+     * Remove old rows.
+     *
+     * We keep the Add Variable button.
+     */
+
+    container
+        .find(".variable-row")
+        .remove();
 
 
-    matches.forEach(
-        function (token) {
-
-            if (
-                !unique.includes(
-                    token
-                )
-            ) {
-
-                unique.push(
-                    token
-                );
-            }
-        }
+    console.log(
+        "Building variable picker..."
     );
 
 
-    return unique.map(
-        function (token) {
+    if (
+        !eventSchema ||
+        eventSchema.length === 0
+    ) {
 
-            return {
+        console.warn(
+            "No Entry Event fields received from Journey Builder"
+        );
 
-                name:
-                    token,
 
-                field:
-                    ""
+        addVariableRow(
+            []
+        );
 
-            };
+        return;
+    }
 
-        }
+
+    /*
+     * Build clean field list.
+     */
+
+    const fields =
+        eventSchema
+            .map(
+                function (field) {
+
+                    /*
+                     * Journey Builder normally provides:
+                     *
+                     * key:
+                     * Event.EventKey.FieldName
+                     *
+                     * name:
+                     * FieldName
+                     */
+
+                    const key =
+                        field.key ||
+                        "";
+
+
+                    const name =
+                        field.name ||
+                        extractFieldName(
+                            key
+                        );
+
+
+                    if (!key) {
+
+                        return null;
+                    }
+
+
+                    return {
+
+                        key,
+                        name
+
+                    };
+
+                }
+            )
+            .filter(
+                Boolean
+            );
+
+
+    console.log(
+        "Variable picker fields:",
+        fields
+    );
+
+
+    addVariableRow(
+        fields
     );
 }
 
 
 /*
 |--------------------------------------------------------------------------
-| MERGE VARIABLES
+| ADD VARIABLE ROW
 |--------------------------------------------------------------------------
 */
 
-function syncVariablesFromMessage() {
+function addVariableRow(
+    fields
+) {
 
-    const message =
-        $("#smsMessage")
-            .val() || "";
+    const container =
+        $("#variableContainer");
 
 
-    const detected =
-        extractVariables(
-            message
+    const row =
+        $(`
+            <div class="variable-row">
+
+                <select class="variable-field">
+
+                    <option value="">
+                        Select field
+                    </option>
+
+                </select>
+
+                <button
+                    type="button"
+                    class="insert-variable"
+                >
+                    Insert
+                </button>
+
+                <button
+                    type="button"
+                    class="remove-variable"
+                >
+                    Remove
+                </button>
+
+            </div>
+        `);
+
+
+    const select =
+        row.find(
+            ".variable-field"
         );
 
 
-    detected.forEach(
-        function (newVariable) {
+    /*
+     * Add fields to dropdown.
+     */
 
-            const existing =
-                variables.find(
-                    item =>
-                        item.name ===
-                        newVariable.name
-                );
+    fields.forEach(
+        function (field) {
 
+            select.append(
 
-            if (!existing) {
+                $("<option>", {
 
-                variables.push(
-                    newVariable
-                );
-            }
+                    value:
+                        field.key,
+
+                    text:
+                        field.name
+
+                })
+
+            );
+
         }
+    );
+
+
+    container.append(
+        row
     );
 
 
     /*
-     * Remove variables which are
-     * no longer present in message.
+     * Insert button.
      */
 
-    variables =
-        variables.filter(
-            function (item) {
+    row.find(
+        ".insert-variable"
+    )
+        .on(
+            "click",
+            function () {
 
-                return detected.some(
-                    detectedItem =>
-                        detectedItem.name ===
-                        item.name
+                const fieldKey =
+                    select.val();
+
+
+                if (!fieldKey) {
+
+                    alert(
+                        "Please select a field."
+                    );
+
+                    return;
+                }
+
+
+                insertVariableIntoMessage(
+                    fieldKey
                 );
-
             }
         );
 
 
-    renderVariableFields();
+    /*
+     * Remove button.
+     */
+
+    row.find(
+        ".remove-variable"
+    )
+        .on(
+            "click",
+            function () {
+
+                row.remove();
+
+            }
+        );
 }
 
 
 /*
 |--------------------------------------------------------------------------
-| RENDER VARIABLE FIELD MAPPING
+| + ADD VARIABLE BUTTON
 |--------------------------------------------------------------------------
 */
 
-function renderVariableFields() {
+$(document).on(
+    "click",
+    "#addVariable",
+    function () {
 
-    const container =
-        $("#variableList");
-
-
-    if (!container.length) {
-
-        console.warn(
-            "#variableList element not found in HTML"
+        console.log(
+            "Add Variable clicked"
         );
 
-        return;
-    }
 
+        /*
+         * Rebuild fields from the schema.
+         */
 
-    container.empty();
+        const fields =
+            eventSchema
+                .map(
+                    function (field) {
 
+                        const key =
+                            field.key ||
+                            "";
 
-    if (
-        variables.length === 0
-    ) {
-
-        container.append(
-            `
-            <div class="variable-empty">
-                Add variables in your message using
-                <strong>%%VariableName%%</strong>
-            </div>
-            `
-        );
-
-        return;
-    }
-
-
-    variables.forEach(
-        function (variable, index) {
-
-            const row =
-                $(`
-                    <div
-                        class="variable-row"
-                        data-index="${index}"
-                        style="margin-bottom:15px;"
-                    >
-
-                        <div
-                            style="
-                                display:flex;
-                                gap:10px;
-                                align-items:center;
-                            "
-                        >
-
-                            <input
-                                type="text"
-                                class="variable-name"
-                                value="${escapeHtml(
-                                    variable.name
-                                )}"
-                                readonly
-                                style="
-                                    width:180px;
-                                    padding:8px;
-                                "
-                            >
-
-                            <select
-                                class="variable-field"
-                                style="
-                                    flex:1;
-                                    padding:8px;
-                                "
-                            >
-
-                                <option value="">
-                                    -- Select DE Field --
-                                </option>
-
-                            </select>
-
-                            <button
-                                type="button"
-                                class="remove-variable"
-                                data-index="${index}"
-                            >
-                                Remove
-                            </button>
-
-                        </div>
-
-                    </div>
-                `);
-
-
-            const select =
-                row.find(
-                    ".variable-field"
-                );
-
-
-            /*
-             * Populate DE fields.
-             */
-
-            eventFields.forEach(
-                function (field) {
-
-                    const option =
-                        $("<option>")
-                            .val(
-                                field.name
-                            )
-                            .text(
-                                field.label
+                        const name =
+                            field.name ||
+                            extractFieldName(
+                                key
                             );
 
 
-                    if (
-                        field.name ===
-                        variable.field
-                    ) {
+                        if (!key) {
 
-                        option.prop(
-                            "selected",
-                            true
-                        );
+                            return null;
+                        }
+
+
+                        return {
+
+                            key,
+                            name
+
+                        };
+
                     }
+                )
+                .filter(
+                    Boolean
+                );
 
 
-                    select.append(
-                        option
-                    );
-
-                }
-            );
-
-
-            /*
-             * Save field selection.
-             */
-
-            select.on(
-                "change",
-                function () {
-
-                    const selectedField =
-                        $(this).val();
-
-
-                    const rowIndex =
-                        Number(
-                            row.attr(
-                                "data-index"
-                            )
-                        );
-
-
-                    if (
-                        variables[rowIndex]
-                    ) {
-
-                        variables[rowIndex].field =
-                            selectedField;
-
-
-                        console.log(
-                            "Variable mapping updated:",
-                            variables[rowIndex]
-                        );
-                    }
-
-                }
-            );
-
-
-            /*
-             * Remove variable.
-             */
-
-            row.find(
-                ".remove-variable"
-            ).on(
-                "click",
-                function () {
-
-                    const rowIndex =
-                        Number(
-                            $(this)
-                                .attr(
-                                    "data-index"
-                                )
-                        );
-
-
-                    variables.splice(
-                        rowIndex,
-                        1
-                    );
-
-
-                    renderVariableFields();
-
-                }
-            );
-
-
-            container.append(
-                row
-            );
-
-        }
-    );
-}
-
-
-/*
-|--------------------------------------------------------------------------
-| ESCAPE HTML
-|--------------------------------------------------------------------------
-*/
-
-function escapeHtml(
-    value
-) {
-
-    return String(
-        value || ""
-    )
-        .replace(
-            /&/g,
-            "&amp;"
-        )
-        .replace(
-            /</g,
-            "&lt;"
-        )
-        .replace(
-            />/g,
-            "&gt;"
-        )
-        .replace(
-            /"/g,
-            "&quot;"
-        )
-        .replace(
-            /'/g,
-            "&#039;"
+        addVariableRow(
+            fields
         );
-}
+    }
+);
 
 
 /*
 |--------------------------------------------------------------------------
-| CONVERT MESSAGE TEMPLATE TO JOURNEY PERSONALIZATION
-|--------------------------------------------------------------------------
-|
-| Example:
-|
-| Input:
-|
-| Hi %%FirstName%%, your order %%OrderNumber%%
-|
-| Output:
-|
-| Hi {{Event.DEAudience-xxx.FirstName}},
-| your order {{Event.DEAudience-xxx.OrderNumber}}
-|
+| INSERT VARIABLE INTO SMS MESSAGE
 |--------------------------------------------------------------------------
 */
 
-function buildPersonalizedMessage(
-    template
+function insertVariableIntoMessage(
+    fieldKey
 ) {
 
-    let message =
-        String(
-            template || ""
+    const textarea =
+        document.getElementById(
+            "smsMessage"
         );
 
 
-    variables.forEach(
-        function (variable) {
+    if (!textarea) {
 
-            if (
-                !variable.name ||
-                !variable.field
-            ) {
+        console.error(
+            "smsMessage textarea not found"
+        );
 
-                return;
-            }
-
-
-            if (
-                !eventDefinitionKey
-            ) {
-
-                return;
-            }
-
-
-            const journeyBinding =
-                "{{Event." +
-                eventDefinitionKey +
-                "." +
-                variable.field +
-                "}}";
-
-
-            /*
-             * Escape special regex characters
-             * in variable name.
-             */
-
-            const escapedVariable =
-                variable.name.replace(
-                    /[.*+?^${}()|[\]\\]/g,
-                    "\\$&"
-                );
-
-
-            const regex =
-                new RegExp(
-                    escapedVariable,
-                    "g"
-                );
-
-
-            message =
-                message.replace(
-                    regex,
-                    journeyBinding
-                );
-
-        }
-    );
-
-
-    return message;
-}
-
-
-/*
-|--------------------------------------------------------------------------
-| VALIDATE VARIABLE MAPPINGS
-|--------------------------------------------------------------------------
-*/
-
-function validateVariables() {
-
-    for (
-        const variable
-        of variables
-    ) {
-
-        if (
-            !variable.field
-        ) {
-
-            alert(
-                "Please select a DE field for " +
-                variable.name
-            );
-
-
-            return false;
-        }
-
+        return;
     }
 
 
-    return true;
+    /*
+     * The fieldKey returned by Journey Builder
+     * is already in the correct format:
+     *
+     * Event.DEAudience-xxx.FirstName
+     *
+     * We only need to wrap it.
+     */
+
+    const token =
+        "{{" +
+        fieldKey +
+        "}}";
+
+
+    const start =
+        textarea.selectionStart;
+
+
+    const end =
+        textarea.selectionEnd;
+
+
+    const currentValue =
+        textarea.value;
+
+
+    /*
+     * Insert at cursor position.
+     */
+
+    textarea.value =
+        currentValue.substring(
+            0,
+            start
+        ) +
+
+        token +
+
+        currentValue.substring(
+            end
+        );
+
+
+    /*
+     * Put cursor immediately after
+     * inserted variable.
+     */
+
+    const newPosition =
+        start +
+        token.length;
+
+
+    textarea.focus();
+
+
+    textarea.setSelectionRange(
+        newPosition,
+        newPosition
+    );
+
+
+    console.log(
+        "Inserted variable:",
+        token
+    );
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| EXTRACT FIELD NAME
+|--------------------------------------------------------------------------
+*/
+
+function extractFieldName(
+    key
+) {
+
+    if (!key) {
+
+        return "";
+    }
+
+
+    const parts =
+        key.split(".");
+
+
+    return (
+        parts[
+            parts.length - 1
+        ] ||
+        key
+    );
 }
 
 
@@ -900,68 +733,21 @@ connection.on(
                 "Please enter an SMS message."
             );
 
-
             return;
         }
 
 
         /*
-         * Find %%variables%%
-         */
-
-        syncVariablesFromMessage();
-
-
-        /*
-         * Validate mapping.
-         */
-
-        if (
-            !validateVariables()
-        ) {
-
-            return;
-        }
-
-
-        /*
-         * Build final Journey Builder
-         * personalization message.
-         */
-
-        const personalizedMessage =
-            buildPersonalizedMessage(
-                userMessage
-            );
-
-
-        console.log(
-            "Original Message Template:",
-            userMessage
-        );
-
-
-        console.log(
-            "Variable Mapping:",
-            variables
-        );
-
-
-        console.log(
-            "Final Journey Message:",
-            personalizedMessage
-        );
-
-
-        /*
-         * --------------------------------------------------------
-         * PHONE BINDING
-         * --------------------------------------------------------
+         * Phone binding
          */
 
         let dynamicPhoneBinding =
             "{{Context.DefaultMobileNumber}}";
 
+
+        /*
+         * Event phone field
+         */
 
         if (
             eventDefinitionKey
@@ -975,9 +761,7 @@ connection.on(
 
 
         /*
-         * --------------------------------------------------------
-         * CONTACT KEY
-         * --------------------------------------------------------
+         * Contact Key
          */
 
         const contactKeyBinding =
@@ -985,81 +769,57 @@ connection.on(
 
 
         /*
-         * --------------------------------------------------------
-         * PAYLOAD
-         * --------------------------------------------------------
+         * Make sure arguments exist.
          */
 
         payload.arguments =
-            payload.arguments || {};
+            payload.arguments ||
+            {};
 
 
         payload.arguments.execute =
-            payload.arguments.execute || {};
+            payload.arguments.execute ||
+            {};
 
+
+        /*
+         * Save the message exactly as entered.
+         *
+         * Example:
+         *
+         * Hello {{Event.DEAudience-xxx.FirstName}}
+         *
+         * Journey Builder will resolve the token
+         * when the journey executes.
+         */
 
         payload.arguments.execute.inArguments = [
-
-            /*
-             * Contact Key
-             */
 
             {
                 contactKey:
                     contactKeyBinding
             },
 
-
-            /*
-             * Phone Number
-             */
-
             {
                 phoneNumber:
                     dynamicPhoneBinding
             },
 
-
-            /*
-             * FINAL MESSAGE
-             *
-             * This contains:
-             *
-             * {{Event.EventKey.Field}}
-             *
-             */
-
             {
                 message:
-                    personalizedMessage
-            },
-
-
-            /*
-             * Save original template
-             * for reopening the activity.
-             */
-
-            {
-                messageTemplate:
                     userMessage
-            },
-
-
-            /*
-             * Save variable mappings.
-             */
-
-            {
-                variables:
-                    variables
             }
 
         ];
 
 
+        /*
+         * Mark activity configured.
+         */
+
         payload.metaData =
-            payload.metaData || {};
+            payload.metaData ||
+            {};
 
 
         payload.metaData.isConfigured =
@@ -1067,117 +827,33 @@ connection.on(
 
 
         console.log(
-            "Activity payload:",
-            payload
+            "================================================"
+        );
+
+        console.log(
+            "FINAL ACTIVITY PAYLOAD"
+        );
+
+        console.log(
+            JSON.stringify(
+                payload,
+                null,
+                2
+            )
+        );
+
+        console.log(
+            "================================================"
         );
 
 
         /*
-         * --------------------------------------------------------
-         * UPDATE ACTIVITY
-         * --------------------------------------------------------
+         * Send configuration back to Journey Builder.
          */
 
         connection.trigger(
             "updateActivity",
             payload
         );
-
-    }
-);
-
-
-/*
-|--------------------------------------------------------------------------
-| MESSAGE INPUT EVENT
-|--------------------------------------------------------------------------
-*/
-
-$(document).on(
-    "input",
-    "#smsMessage",
-    function () {
-
-        /*
-         * Don't render on every character.
-         *
-         * Only synchronize detected variables.
-         */
-
-        syncVariablesFromMessage();
-
-    }
-);
-
-
-/*
-|--------------------------------------------------------------------------
-| ADD VARIABLE BUTTON
-|--------------------------------------------------------------------------
-*/
-
-$(document).on(
-    "click",
-    "#addVariable",
-    function () {
-
-        const variableName =
-            prompt(
-                "Enter variable name.\n\nExample: FirstName"
-            );
-
-
-        if (!variableName) {
-
-            return;
-        }
-
-
-        const cleanName =
-            variableName
-                .trim()
-                .replace(
-                    /[^A-Za-z0-9_]/g,
-                    ""
-                );
-
-
-        if (!cleanName) {
-
-            alert(
-                "Please enter a valid variable name."
-            );
-
-            return;
-        }
-
-
-        const token =
-            "%%" +
-            cleanName +
-            "%%";
-
-
-        const textarea =
-            $("#smsMessage");
-
-
-        const currentValue =
-            textarea.val();
-
-
-        textarea.val(
-            currentValue +
-            token
-        );
-
-
-        textarea.trigger(
-            "input"
-        );
-
-
-        textarea.focus();
-
     }
 );
